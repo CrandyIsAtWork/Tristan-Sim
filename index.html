@@ -30,7 +30,7 @@
         .menu-item.selected { color: #f39c12; border: 2px solid #f39c12; background-color: rgba(243, 156, 18, 0.1); }
         .instruction { margin-top: 50px; font-size: 0.9em; color: #aaa; }
 
-        /* --- GAME MAP STYLING (Map assets retained) --- */
+        /* --- GAME MAP STYLING --- */
         :root { --tile-size: 32px; }
         #game-map {
             display: grid; grid-template-columns: repeat(var(--map-width), var(--tile-size)); 
@@ -39,12 +39,13 @@
         }
         .tile { width: var(--tile-size); height: var(--tile-size); background-size: cover; position: relative; }
         .tile.wall { background-color: #555; }
-        .tile.floor { background-image: url('IMAGES/Stone.png'); background-color: #333; }
+        /* FIX 1: Changed Stone.png to Stone.jpg */
+        .tile.floor { background-image: url('IMAGES/Stone.jpg'); background-color: #333; }
         .entity { position: absolute; width: 100%; height: 100%; background-size: contain; background-repeat: no-repeat; background-position: center; }
         .entity.player { background-image: url('IMAGES/Tristan.png'); z-index: 10; }
         .entity.enemy { background-image: url('IMAGES/enemy.png'); z-index: 5; }
 
-        /* --- BATTLE SCREEN STYLES (Image Paths Fixed) --- */
+        /* --- BATTLE SCREEN STYLES --- */
         #battle-screen {
             background-color: #000;
             justify-content: space-between;
@@ -72,13 +73,11 @@
 
         /* Enemy is typically upper-left, Player is lower-right */
         .battle-entity.enemy-sprite {
-            /* FIXED: Using map sprite for battle */
             background-image: url('IMAGES/enemy.png'); 
             align-self: flex-start;
             background-position: top center;
         }
         .battle-entity.player-sprite {
-            /* FIXED: Using map sprite for battle */
             background-image: url('IMAGES/Tristan.png'); 
             align-self: flex-end;
             background-position: bottom center;
@@ -461,7 +460,7 @@
                 setTimeout(endBattle, 1500, false);
             } else if (gameState.player.hp <= 0) {
                 battleMessage(`Tristan has been defeated!`);
-                // **FIX: Go to Main Menu on Defeat**
+                // FIX: Go to Main Menu on Defeat
                 setTimeout(() => { showScreen(startMenu); }, 1500); 
             } else {
                 battleMessage('What will Tristan do?');
@@ -634,12 +633,16 @@
         function gameLoop() {
             const gamepad = navigator.getGamepads()[0]; 
             if (gamepad) {
+                // FIXED SNES indices: We check for button 0 and 1, as SNES Select/Start/A/B buttons often map to 0 and 1.
+                // D-Pad buttons 12-15 are usually consistent.
                 const dpadUp = gamepad.buttons[12] && gamepad.buttons[12].pressed;
                 const dpadDown = gamepad.buttons[13] && gamepad.buttons[13].pressed;
                 const dpadLeft = gamepad.buttons[14] && gamepad.buttons[14].pressed;
                 const dpadRight = gamepad.buttons[15] && gamepad.buttons[15].pressed;
+                
+                // FIX 2: Simplified/adjusted select button check for common SNES/simple gamepad mapping
                 const selectButton = (gamepad.buttons[0] && gamepad.buttons[0].pressed) || 
-                                     (gamepad.buttons[2] && gamepad.buttons[2].pressed); 
+                                     (gamepad.buttons[1] && gamepad.buttons[1].pressed); 
                 
                 if (gameState.currentScreen === 'menu') {
                     if (dpadUp && !inputDebounce.up) { navigateMenu(-1); inputDebounce.up = true; } else if (!dpadUp) { inputDebounce.up = false; }
