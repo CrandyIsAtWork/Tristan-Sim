@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Tristan Certified Roguelike - Image Assets v5.0</title>
+    <title>Tristan Certified Roguelike - Battle System</title>
     
     <style>
-        /* Base styles remain the same */
+        /* Base styles */
         body {
             margin: 0; font-family: sans-serif; color: #fff; background-color: #000;
             text-align: center; overflow: hidden;
@@ -30,58 +30,139 @@
         .menu-item.selected { color: #f39c12; border: 2px solid #f39c12; background-color: rgba(243, 156, 18, 0.1); }
         .instruction { margin-top: 50px; font-size: 0.9em; color: #aaa; }
 
-        /* --- GAME MAP STYLING FOR IMAGES --- */
-        
-        /* Define tile size */
-        :root {
-            --tile-size: 32px;
+        /* --- GAME MAP STYLING (Retained Image Paths) --- */
+        :root { --tile-size: 32px; }
+        #game-map {
+            display: grid; grid-template-columns: repeat(var(--map-width), var(--tile-size)); 
+            grid-template-rows: repeat(var(--map-height), var(--tile-size)); margin-top: 20px;
+            border: 2px solid #f39c12; box-sizing: content-box;
+        }
+        .tile { width: var(--tile-size); height: var(--tile-size); background-size: cover; position: relative; }
+        .tile.wall { background-color: #555; }
+        .tile.floor { background-image: url('IMAGES/Stone.png'); background-color: #333; }
+        .entity { position: absolute; width: 100%; height: 100%; background-size: contain; background-repeat: no-repeat; background-position: center; }
+        .entity.player { background-image: url('IMAGES/Tristan.png'); z-index: 10; }
+        .entity.enemy { background-image: url('IMAGES/enemy.png'); z-index: 5; }
+
+        /* --- BATTLE SCREEN STYLES (New) --- */
+        #battle-screen {
+            background-color: #000;
+            justify-content: space-between; /* Push elements to top/bottom */
+            padding: 20px;
+            box-sizing: border-box;
         }
 
-        #game-map {
-            display: grid;
-            grid-template-columns: repeat(var(--map-width), var(--tile-size)); 
-            grid-template-rows: repeat(var(--map-height), var(--tile-size));
-            margin-top: 20px;
-            border: 2px solid #f39c12;
-            box-sizing: content-box;
+        /* Battle Field Area */
+        .battle-field {
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-grow: 1; /* Take up center space */
         }
         
-        .tile {
-            width: var(--tile-size);
-            height: var(--tile-size);
-            background-size: cover;
+        .battle-entity {
+            width: 40%;
+            height: 100%;
+            max-width: 300px;
+            background-size: contain;
+            background-repeat: no-repeat;
             position: relative;
         }
 
-        /* Tile Textures - UPDATED PATHS */
-        .tile.wall { 
-            background-color: #555; /* Solid wall color for now */
+        /* Enemy is typically upper-left, Player is lower-right */
+        .battle-entity.enemy-sprite {
+            background-image: url('IMAGES/enemy_battle.png'); 
+            align-self: flex-start; /* Move up */
+            background-position: top center;
         }
-        .tile.floor { 
-            /* Floor is now STONE */
-            background-image: url('IMAGES/Stone.png'); 
-            background-color: #333; /* Fallback color */
+        .battle-entity.player-sprite {
+            background-image: url('IMAGES/tristan_battle.png'); 
+            align-self: flex-end; /* Move down */
+            background-position: bottom center;
         }
-        
-        /* Entity Layer */
-        .entity {
+
+        /* Health Bars and Info Boxes */
+        .info-box {
             position: absolute;
-            width: 100%;
+            width: 150px;
+            height: 40px;
+            padding: 5px;
+            background-color: #fff;
+            color: #000;
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0 #333;
+            font-size: 12px;
+            text-align: left;
+        }
+        .enemy-sprite .info-box { top: 20px; left: calc(100% - 10px); }
+        .player-sprite .info-box { bottom: 0; right: calc(100% - 10px); }
+
+        .hp-bar-outer {
+            width: 100px;
+            height: 8px;
+            background-color: #e74c3c; /* Red background */
+            border: 1px solid #000;
+            margin-top: 2px;
+        }
+        .hp-bar-inner {
             height: 100%;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
+            background-color: #2ecc71; /* Green fill */
+            transition: width 0.5s;
         }
         
-        /* Specific Entity Images - UPDATED PATHS */
-        .entity.player { 
-            background-image: url('IMAGES/Tristan.png');
-            z-index: 10;
+        /* Command Menu Area */
+        .command-area {
+            width: 100%;
+            height: 150px;
+            background-color: #fff;
+            color: #000;
+            border: 3px solid #000;
+            display: flex;
+            align-items: center;
         }
-        .entity.enemy { 
-            background-image: url('IMAGES/enemy.png'); /* Assuming enemy.png is also in IMAGES */
-            z-index: 5;
+        
+        #message-box {
+            width: 60%;
+            height: 100%;
+            padding: 20px;
+            font-size: 18px;
+            text-align: left;
+            border-right: 3px solid #000;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
         }
+
+        #action-menu {
+            width: 40%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            height: 100%;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 16px;
+        }
+        
+        .action-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+        .action-item:nth-child(odd) { border-right: 1px solid #000; }
+        .action-item:nth-child(1), .action-item:nth-child(2) { border-bottom: 1px solid #000; }
+
+        .action-item.selected {
+            background-color: #3498db; /* Highlight color */
+            color: #fff;
+        }
+
+        /* Hide game map specific stats during battle */
+        #player-stats { display: none; }
         
     </style>
 </head>
@@ -105,10 +186,37 @@
     
     <div id="game-area" class="screen hidden">
         <h1>Certified Dungeon</h1>
-        <div id="game-map">
-            </div>
+        <div id="game-map"></div>
         <div id="message-log" style="margin-top: 20px; color: #aaa;"></div>
-        <div id="player-stats" style="margin-top: 10px; color: #f39c12;">HP: 10</div>
+        <div id="player-stats" style="margin-top: 10px; color: #f39c12; display: block;">HP: 10</div>
+    </div>
+
+    <div id="battle-screen" class="screen hidden">
+        <div class="battle-field">
+            <div class="battle-entity enemy-sprite">
+                <div class="info-box">
+                    <span id="enemy-name">Cancer Blob</span><br>
+                    HP: <div class="hp-bar-outer"><div id="enemy-hp-bar" class="hp-bar-inner" style="width: 100%;"></div></div>
+                </div>
+            </div>
+            
+            <div class="battle-entity player-sprite">
+                <div class="info-box">
+                    <span id="player-battle-name">Tristan</span><br>
+                    HP: <div class="hp-bar-outer"><div id="player-hp-bar" class="hp-bar-inner" style="width: 100%;"></div></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="command-area">
+            <div id="message-box-battle">What will Tristan do?</div>
+            <ul id="action-menu">
+                <li class="action-item selected" data-action-id="0">Attack (Certified Punch)</li>
+                <li class="action-item" data-action-id="1">Talk (Certified Remark)</li>
+                <li class="action-item" data-action-id="2">Item (Certified Diaper)</li>
+                <li class="action-item" data-action-id="3">Flee (Certified Retreat)</li>
+            </ul>
+        </div>
     </div>
     
     <script>
@@ -116,26 +224,35 @@
         const MAP_WIDTH = 20;
         const MAP_HEIGHT = 20;
         const TILE_WALL = { type: 'wall' };
-        const TILE_FLOOR = { type: 'floor' }; // This is currently mapped to Stone.png via CSS
+        const TILE_FLOOR = { type: 'floor' };
         const NUM_ENEMIES = 3;
 
         // --- Game State Variables ---
         const gameState = {
-            map: [], // 2D array of map tiles
-            player: { x: 0, y: 0, type: 'player', hp: 10 },
+            map: [],
+            player: { x: 0, y: 0, type: 'player', hp: 10, maxHp: 10, attack: 3 },
             enemies: [],
-            currentScreen: 'loading'
+            currentScreen: 'loading', // 'loading', 'menu', 'game', 'battle'
+        };
+        
+        const battleState = {
+            activeEnemy: null,
+            menuIndex: 0,
+            menuItems: document.querySelectorAll('#action-menu .action-item'),
+            turnPhase: 'player_action', // 'player_action', 'enemy_action', 'message'
         };
 
         // --- DOM Elements ---
         const loadingScreen = document.getElementById('loading-screen');
         const startMenu = document.getElementById('start-menu');
         const gameArea = document.getElementById('game-area');
+        const battleScreen = document.getElementById('battle-screen'); // New
         const gameMapElement = document.getElementById('game-map');
-        const messageLog = document.getElementById('message-log');
+        const messageLog = document.getElementById('message-log'); // Map Log
         const playerStats = document.getElementById('player-stats');
         const menuItems = document.querySelectorAll('#menu-options .menu-item');
-        let selectedIndex = 0;
+        const battleMessageBox = document.getElementById('message-box-battle'); // Battle Log
+        let selectedIndex = 0; // Menu index for Start Screen
         
         // --- Gamepad Variables ---
         let gamePads = {};      
@@ -147,42 +264,52 @@
         // ====================================================================
 
         function logMessage(msg) {
-            messageLog.textContent = `[MESSAGE] ${msg}`;
+            messageLog.textContent = `[MAP MESSAGE] ${msg}`;
         }
         
+        function battleMessage(msg) {
+            battleMessageBox.textContent = msg;
+        }
+
         function updatePlayerStats() {
-            playerStats.textContent = `HP: ${gameState.player.hp}`;
+            playerStats.textContent = `HP: ${gameState.player.hp}/${gameState.player.maxHp}`;
             if (gameState.player.hp <= 0) {
                 logMessage("You have been defeated... Game Over.");
                 // Future: Add game over screen transition
             }
         }
+        
+        function updateBattleHPBars() {
+            if (!battleState.activeEnemy) return;
 
+            // Player HP Bar
+            const playerPercent = (gameState.player.hp / gameState.player.maxHp) * 100;
+            document.getElementById('player-hp-bar').style.width = `${Math.max(0, playerPercent)}%`;
+
+            // Enemy HP Bar
+            const enemyPercent = (battleState.activeEnemy.hp / battleState.activeEnemy.maxHp) * 100;
+            document.getElementById('enemy-hp-bar').style.width = `${Math.max(0, enemyPercent)}%`;
+
+            // Update Enemy Name/HP in the info box (if needed, e.g., to show max HP)
+            document.getElementById('enemy-name').textContent = `Cancer Blob (HP: ${Math.max(0, battleState.activeEnemy.hp)})`;
+            document.getElementById('player-battle-name').textContent = `Tristan (HP: ${Math.max(0, gameState.player.hp)})`;
+        }
 
         // ====================================================================
-        // MAP GENERATION LOGIC (Drunkard's Walk)
+        // MAP GENERATION & MOVEMENT (Slightly modified movePlayer)
         // ====================================================================
 
         function initMap() {
-            // 1. Fill map with walls
-            gameState.map = Array.from({ length: MAP_HEIGHT }, () => 
-                Array(MAP_WIDTH).fill(TILE_WALL.type)
-            );
-
-            // 2. Drunkard's Walk to carve out floors
+            // ... (Map generation logic remains the same) ...
+            gameState.map = Array.from({ length: MAP_HEIGHT }, () => Array(MAP_WIDTH).fill(TILE_WALL.type));
             let x = Math.floor(MAP_WIDTH / 2);
             let y = Math.floor(MAP_HEIGHT / 2);
             let floorsCreated = 0;
             const targetFloors = MAP_WIDTH * MAP_HEIGHT * 0.4; 
 
             while (floorsCreated < targetFloors) {
-                if (gameState.map[y][x] === TILE_WALL.type) {
-                    gameState.map[y][x] = TILE_FLOOR.type;
-                    floorsCreated++;
-                }
-                
+                if (gameState.map[y][x] === TILE_WALL.type) { gameState.map[y][x] = TILE_FLOOR.type; floorsCreated++; }
                 const dir = Math.floor(Math.random() * 4);
-                
                 switch (dir) {
                     case 0: x = Math.min(x + 1, MAP_WIDTH - 2); break;
                     case 1: x = Math.max(x - 1, 1); break;
@@ -191,7 +318,6 @@
                 }
             }
 
-            // 3. Place Entities
             placeEntities(gameState.map);
         }
 
@@ -199,54 +325,27 @@
             let floorTiles = [];
             for (let y = 1; y < MAP_HEIGHT - 1; y++) {
                 for (let x = 1; x < MAP_WIDTH - 1; x++) {
-                    if (map[y][x] === TILE_FLOOR.type) {
-                        floorTiles.push({ x, y });
-                    }
+                    if (map[y][x] === TILE_FLOOR.type) { floorTiles.push({ x, y }); }
                 }
             }
             
-            // Randomly place Player
             const playerPos = floorTiles.splice(Math.floor(Math.random() * floorTiles.length), 1)[0];
             gameState.player.x = playerPos.x;
             gameState.player.y = playerPos.y;
 
-            // Randomly place Enemies
             gameState.enemies = [];
             for (let i = 0; i < NUM_ENEMIES; i++) {
                 if (floorTiles.length > 0) {
                     const enemyPos = floorTiles.splice(Math.floor(Math.random() * floorTiles.length), 1)[0];
-                    gameState.enemies.push({ x: enemyPos.x, y: enemyPos.y, type: 'enemy', hp: 3 });
+                    // Enemy now has a maxHp property for the health bar
+                    gameState.enemies.push({ x: enemyPos.x, y: enemyPos.y, type: 'enemy', hp: 8, maxHp: 8, attack: 2 });
                 }
             }
         }
-
-        // ====================================================================
-        // GAME LOGIC AND RENDERING
-        // ====================================================================
-        
-        function updateGame() {
-            moveEnemies();
-            renderMap();
-        }
-
-        function moveEnemies() {
-            gameState.enemies.forEach(enemy => {
-                if (enemy.hp <= 0) return; 
-
-                const dx = Math.floor(Math.random() * 3) - 1;
-                const dy = Math.floor(Math.random() * 3) - 1; 
-
-                const newX = enemy.x + dx;
-                const newY = enemy.y + dy;
-
-                if (isWalkable(newX, newY) && !isOccupiedByOtherEntity(newX, newY, enemy)) {
-                    enemy.x = newX;
-                    enemy.y = newY;
-                }
-            });
-        }
         
         function movePlayer(dx, dy) {
+            if (gameState.currentScreen !== 'game') return;
+
             const newX = gameState.player.x + dx;
             const newY = gameState.player.y + dy;
 
@@ -254,27 +353,17 @@
                 const enemy = gameState.enemies.find(e => e.x === newX && e.y === newY);
                 
                 if (enemy && enemy.hp > 0) {
-                    // Simple combat: player hits enemy, enemy hits player
-                    logMessage(`Tristan attacks E at (${newX}, ${newY})!`);
-                    enemy.hp -= 1;
-                    
-                    if (enemy.hp > 0) {
-                         gameState.player.hp -= 1;
-                         logMessage(`E hits back! Player HP: ${gameState.player.hp}`);
-                    } else {
-                        logMessage("Enemy defeated!");
-                    }
-                    
-                    updatePlayerStats();
+                    // *** START BATTLE HERE ***
+                    startBattle(enemy);
                 } else {
                     gameState.player.x = newX;
                     gameState.player.y = newY;
+                    updateGame();
                 }
-                
-                updateGame();
             }
         }
-
+        
+        // ... (isWalkable and isOccupiedByOtherEntity remain the same) ...
         function isWalkable(x, y) {
             if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return false;
             return gameState.map[y][x] === TILE_FLOOR.type;
@@ -286,28 +375,190 @@
             return enemyOccupied || playerOccupied;
         }
 
+
+        // ====================================================================
+        // BATTLE LOGIC (New)
+        // ====================================================================
+
+        function startBattle(enemy) {
+            battleState.activeEnemy = enemy;
+            battleState.menuIndex = 0;
+            battleState.turnPhase = 'player_action';
+            
+            // Set the scene
+            showScreen(battleScreen);
+            updateBattleMenuSelection();
+            updateBattleHPBars();
+            battleMessage(`A Certified battle with the Cancer Blob begins!`);
+        }
+
+        function executeBattleTurn(actionIndex) {
+            if (battleState.turnPhase !== 'player_action') return;
+            battleState.turnPhase = 'message'; // Lock input during action/message display
+
+            switch (actionIndex) {
+                case 0: // Attack
+                    playerAttack();
+                    break;
+                case 1: // Talk
+                    playerTalk();
+                    break;
+                case 2: // Item
+                    playerUseItem();
+                    break;
+                case 3: // Flee
+                    playerFlee();
+                    break;
+            }
+        }
+        
+        // --- Player Actions ---
+        function playerAttack() {
+            const damage = gameState.player.attack + Math.floor(Math.random() * 2); // 3-4 damage
+            battleState.activeEnemy.hp -= damage;
+            
+            battleMessage(`Tristan uses Certified Punch! Deals ${damage} damage.`);
+            updateBattleHPBars();
+
+            // Give time for message to read before enemy turn
+            setTimeout(checkBattleStatus, 1500);
+        }
+
+        function playerTalk() {
+            const remarks = ["'That's a certified L, buddy!'", "'You don't look very certified to me.'", "'Is that an adult diaper I see?'"];
+            const remark = remarks[Math.floor(Math.random() * remarks.length)];
+            battleMessage(`Tristan says: ${remark}`);
+            
+            setTimeout(enemyTurn, 1500);
+        }
+
+        function playerUseItem() {
+            battleMessage(`Tristan attempts to use a Certified Diaper... it does nothing.`);
+            setTimeout(enemyTurn, 1500);
+        }
+
+        function playerFlee() {
+            const success = Math.random() > 0.5;
+            if (success) {
+                battleMessage(`Tristan performs a Certified Retreat and successfully flees!`);
+                setTimeout(endBattle, 1500, true); // End battle, return to map
+            } else {
+                battleMessage(`The retreat was uncertified! Cannot flee.`);
+                setTimeout(enemyTurn, 1500);
+            }
+        }
+        
+        // --- Enemy Action ---
+        function enemyTurn() {
+            if (battleState.activeEnemy.hp <= 0 || gameState.player.hp <= 0) {
+                 checkBattleStatus();
+                 return;
+            }
+
+            const damage = battleState.activeEnemy.attack + Math.floor(Math.random() * 2); // 2-3 damage
+            gameState.player.hp -= damage;
+            
+            battleMessage(`The Cancer Blob attacks! Deals ${damage} damage to Tristan.`);
+            updateBattleHPBars();
+            updatePlayerStats(); // Update map stats too
+
+            setTimeout(checkBattleStatus, 1500);
+        }
+
+        // --- Battle Flow ---
+        function checkBattleStatus() {
+            if (battleState.activeEnemy.hp <= 0) {
+                battleMessage(`The Cancer Blob was defeated!`);
+                // Remove enemy from map
+                gameState.enemies = gameState.enemies.filter(e => e !== battleState.activeEnemy);
+                setTimeout(endBattle, 1500, false);
+            } else if (gameState.player.hp <= 0) {
+                battleMessage(`Tristan has been defeated!`);
+                setTimeout(endBattle, 1500, false);
+            } else {
+                battleMessage('What will Tristan do?');
+                battleState.turnPhase = 'player_action'; // Back to player's turn
+                updateBattleMenuSelection(); // Re-highlight menu
+            }
+        }
+
+        function endBattle(fled) {
+            // Move player to the previous tile if they didn't flee (to avoid immediate re-battle)
+            if (!fled && gameState.player.hp > 0) {
+                // Since we don't track the *exact* previous tile, we'll just keep the player there
+                logMessage(`Battle ended.`);
+            } else if (gameState.player.hp <= 0) {
+                 logMessage(`GAME OVER.`);
+            }
+            
+            battleState.activeEnemy = null;
+            showScreen(gameArea);
+            updateGame(); // Render the map again
+        }
+        
+        // --- Battle Menu Navigation ---
+        function navigateBattleMenu(direction) {
+            if (gameState.currentScreen !== 'battle' || battleState.turnPhase !== 'player_action') return;
+            
+            const numItems = battleState.menuItems.length;
+            let newIndex = battleState.menuIndex;
+
+            if (direction === 'UP') newIndex = newIndex < 2 ? newIndex + 2 : newIndex - 2;
+            else if (direction === 'DOWN') newIndex = newIndex >= 2 ? newIndex - 2 : newIndex + 2;
+            else if (direction === 'LEFT') newIndex = newIndex === 0 || newIndex === 2 ? newIndex + 1 : newIndex - 1;
+            else if (direction === 'RIGHT') newIndex = newIndex === 1 || newIndex === 3 ? newIndex - 1 : newIndex + 1;
+
+            battleState.menuIndex = (newIndex + numItems) % numItems;
+            updateBattleMenuSelection();
+        }
+
+        function updateBattleMenuSelection() {
+            battleState.menuItems.forEach((item, index) => {
+                item.classList.remove('selected');
+                if (index === battleState.menuIndex && battleState.turnPhase === 'player_action') {
+                    item.classList.add('selected');
+                }
+            });
+        }
+
+
+        // ====================================================================
+        // GAME LOGIC AND RENDERING (Map enemy movement and render retained)
+        // ====================================================================
+        function updateGame() {
+            moveEnemies();
+            renderMap();
+        }
+
+        function moveEnemies() {
+            gameState.enemies.forEach(enemy => {
+                if (enemy.hp <= 0) return; 
+                const dx = Math.floor(Math.random() * 3) - 1;
+                const dy = Math.floor(Math.random() * 3) - 1; 
+                const newX = enemy.x + dx;
+                const newY = enemy.y + dy;
+                if (isWalkable(newX, newY) && !isOccupiedByOtherEntity(newX, newY, enemy)) {
+                    enemy.x = newX;
+                    enemy.y = newY;
+                }
+            });
+        }
+        
         function renderMap() {
             gameMapElement.style.setProperty('--map-width', MAP_WIDTH);
             gameMapElement.style.setProperty('--map-height', MAP_HEIGHT);
-
             let mapHTML = '';
             for (let y = 0; y < MAP_HEIGHT; y++) {
                 for (let x = 0; x < MAP_WIDTH; x++) {
-                    
                     const tileType = gameState.map[y][x];
                     let tileHTML = `<div class="tile ${tileType}">`;
-                    
-                    // Player
                     if (gameState.player.x === x && gameState.player.y === y && gameState.player.hp > 0) {
                         tileHTML += `<div class="entity player"></div>`;
                     } 
-                    
-                    // Enemy
                     const enemy = gameState.enemies.find(e => e.x === x && e.y === y);
                     if (enemy && enemy.hp > 0 && !(gameState.player.x === x && gameState.player.y === y)) {
                         tileHTML += `<div class="entity enemy"></div>`;
                     }
-
                     tileHTML += `</div>`;
                     mapHTML += tileHTML;
                 }
@@ -315,26 +566,31 @@
             gameMapElement.innerHTML = mapHTML;
         }
 
-
         // ====================================================================
-        // SCREEN AND MENU LOGIC (Retained)
+        // SCREEN AND MENU LOGIC (Map menu retained)
         // ====================================================================
         
         function showScreen(screenElement) {
+            // Hide all screens
             loadingScreen.classList.add('hidden');
             startMenu.classList.add('hidden');
             gameArea.classList.add('hidden');
-            
+            battleScreen.classList.add('hidden'); // NEW
+
+            // Show selected screen and update state
             screenElement.classList.remove('hidden');
-            
             if (screenElement === loadingScreen) gameState.currentScreen = 'loading';
             else if (screenElement === startMenu) gameState.currentScreen = 'menu';
             else if (screenElement === gameArea) gameState.currentScreen = 'game';
+            else if (screenElement === battleScreen) gameState.currentScreen = 'battle'; // NEW
+            
+            // Toggle visibility of map stats
+            playerStats.style.display = gameState.currentScreen === 'game' ? 'block' : 'none';
         }
 
         function startGame() {
             logMessage("The adventure begins!");
-            gameState.player.hp = 10;
+            gameState.player.hp = gameState.player.maxHp;
             initMap(); 
             updatePlayerStats();
             renderMap();
@@ -372,16 +628,22 @@
                 else if (event.key === 's' || event.key === 'ArrowDown') { navigateMenu(1); }
                 else if (event.key === 'Enter') { selectMenuItem(); }
             } else if (gameState.currentScreen === 'game') {
-                let dx = 0;
-                let dy = 0;
-                
+                let dx = 0; let dy = 0;
                 if (event.key === 'w' || event.key === 'ArrowUp') dy = -1;
                 else if (event.key === 's' || event.key === 'ArrowDown') dy = 1;
                 else if (event.key === 'a' || event.key === 'ArrowLeft') dx = -1;
                 else if (event.key === 'd' || event.key === 'ArrowRight') dx = 1;
+                if (dx !== 0 || dy !== 0) { movePlayer(dx, dy); event.preventDefault(); }
+            } else if (gameState.currentScreen === 'battle') { // NEW BATTLE INPUT
+                let direction = null;
+                if (event.key === 'w' || event.key === 'ArrowUp') direction = 'UP';
+                else if (event.key === 's' || event.key === 'ArrowDown') direction = 'DOWN';
+                else if (event.key === 'a' || event.key === 'ArrowLeft') direction = 'LEFT';
+                else if (event.key === 'd' || event.key === 'ArrowRight') direction = 'RIGHT';
                 
-                if (dx !== 0 || dy !== 0) {
-                    movePlayer(dx, dy);
+                if (direction) { navigateBattleMenu(direction); event.preventDefault(); }
+                else if (event.key === 'Enter' || event.key === ' ') { 
+                    executeBattleTurn(battleState.menuIndex); 
                     event.preventDefault(); 
                 }
             }
@@ -389,7 +651,6 @@
 
         function gameLoop() {
             const gamepad = navigator.getGamepads()[0]; 
-
             if (gamepad) {
                 const dpadUp = gamepad.buttons[12] && gamepad.buttons[12].pressed;
                 const dpadDown = gamepad.buttons[13] && gamepad.buttons[13].pressed;
@@ -397,38 +658,35 @@
                 const dpadRight = gamepad.buttons[15] && gamepad.buttons[15].pressed;
                 const selectButton = (gamepad.buttons[0] && gamepad.buttons[0].pressed) || 
                                      (gamepad.buttons[2] && gamepad.buttons[2].pressed); 
-
+                
                 if (gameState.currentScreen === 'menu') {
-                    if (dpadUp && !inputDebounce.up) { navigateMenu(-1); inputDebounce.up = true; } 
-                    else if (!dpadUp) { inputDebounce.up = false; }
-                    
-                    if (dpadDown && !inputDebounce.down) { navigateMenu(1); inputDebounce.down = true; } 
-                    else if (!dpadDown) { inputDebounce.down = false; }
-                    
-                    if (selectButton && !inputDebounce.select) { selectMenuItem(); inputDebounce.select = true; } 
-                    else if (!selectButton) { inputDebounce.select = false; }
-                    
+                    // Menu Input (retained)
+                    if (dpadUp && !inputDebounce.up) { navigateMenu(-1); inputDebounce.up = true; } else if (!dpadUp) { inputDebounce.up = false; }
+                    if (dpadDown && !inputDebounce.down) { navigateMenu(1); inputDebounce.down = true; } else if (!dpadDown) { inputDebounce.down = false; }
+                    if (selectButton && !inputDebounce.select) { selectMenuItem(); inputDebounce.select = true; } else if (!selectButton) { inputDebounce.select = false; }
                 } else if (gameState.currentScreen === 'game') {
-                    let dx = 0;
-                    let dy = 0;
-                    let moved = false;
-                    
+                    // Game Movement Input (retained)
+                    let dx = 0; let dy = 0; let moved = false;
                     if (!inputDebounce.gameMove) {
-                        if (dpadUp) { dy = -1; moved = true; }
-                        else if (dpadDown) { dy = 1; moved = true; }
-                        else if (dpadLeft) { dx = -1; moved = true; }
-                        else if (dpadRight) { dx = 1; moved = true; }
+                        if (dpadUp) { dy = -1; moved = true; } else if (dpadDown) { dy = 1; moved = true; }
+                        else if (dpadLeft) { dx = -1; moved = true; } else if (dpadRight) { dx = 1; moved = true; }
+                        if (moved) { movePlayer(dx, dy); inputDebounce.gameMove = true; }
+                    } else if (!dpadUp && !dpadDown && !dpadLeft && !dpadRight) { inputDebounce.gameMove = false; }
+                } else if (gameState.currentScreen === 'battle') { // NEW BATTLE INPUT (using single-press debounce)
+                    if (battleState.turnPhase === 'player_action') {
+                        if (!inputDebounce.battleMove) {
+                            let direction = null;
+                            if (dpadUp) direction = 'UP'; else if (dpadDown) direction = 'DOWN';
+                            else if (dpadLeft) direction = 'LEFT'; else if (dpadRight) direction = 'RIGHT';
 
-                        if (moved) {
-                            movePlayer(dx, dy);
-                            inputDebounce.gameMove = true;
+                            if (direction) { navigateBattleMenu(direction); inputDebounce.battleMove = true; }
+                            else if (selectButton) { executeBattleTurn(battleState.menuIndex); inputDebounce.battleMove = true; }
+                        } else if (!dpadUp && !dpadDown && !dpadLeft && !dpadRight && !selectButton) {
+                            inputDebounce.battleMove = false;
                         }
-                    } else if (!dpadUp && !dpadDown && !dpadLeft && !dpadRight) {
-                        inputDebounce.gameMove = false;
                     }
                 }
             }
-
             raf = window.requestAnimationFrame(gameLoop);
         }
         
@@ -443,9 +701,7 @@
             }, 3000); 
             
             const initialGamepads = navigator.getGamepads();
-            for (const pad of initialGamepads) {
-                if (pad) { gamePads[pad.index] = pad; }
-            }
+            for (const pad of initialGamepads) { if (pad) { gamePads[pad.index] = pad; } }
             if (Object.keys(gamePads).length > 0) { gameLoop(); } 
             
             updatePlayerStats();
