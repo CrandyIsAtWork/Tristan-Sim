@@ -28,29 +28,16 @@ const battleState = {
 let raf; // Request Animation Frame reference
 let inputDebounce = { up: false, down: false, left: false, right: false, select: false, gameMove: false, battleMove: false };
 
-// --- DOM Elements ---
-const loadingScreen = document.getElementById('loading-screen');
-const introScreen = document.getElementById('intro-screen');
-const tutorialScreen = document.getElementById('tutorial-screen'); 
-const gameArea = document.getElementById('game-area');
-const gameMapElement = document.getElementById('game-map');
-const messageLog = document.getElementById('message-log');
-const playerStats = document.getElementById('player-stats');
-const playerHPElement = document.getElementById('player-hp');
-const playerMaxHPElement = document.getElementById('player-max-hp');
-const playerAttackElement = document.getElementById('player-attack');
+// --- DOM Elements (Declared as 'let' for assignment in init()) ---
+let loadingScreen, introScreen, tutorialScreen, gameArea, gameMapElement, messageLog, playerStats;
+let playerHPElement, playerMaxHPElement, playerAttackElement;
 
 // Battle elements
-const battleScreen = document.getElementById('battle-screen');
-const battleMessageLog = document.getElementById('battle-message-log');
-const battlePlayerHP = document.getElementById('battle-player-hp');
-const battleEnemyHP = document.getElementById('battle-enemy-hp');
-const enemyNameElement = document.getElementById('enemy-name');
-const battleMenuOptions = document.querySelectorAll('#battle-menu .menu-item');
+let battleScreen, battleMessageLog, battlePlayerHP, battleEnemyHP, enemyNameElement, battleMenuOptions;
 
 // Menu elements
-const introOptions = document.querySelectorAll('#intro-options .menu-item'); 
-const tutorialOptions = document.querySelectorAll('#tutorial-menu .tut-option'); 
+let introOptions, tutorialOptions;
+
 let selectedIndex = 0; // For Intro Menu
 let tutorialIndex = 0; // For Tutorial Menu
 
@@ -409,6 +396,32 @@ function startGame() {
 }
 
 function init() {
+    // ********* FIX: FETCH ALL DOM ELEMENTS HERE *********
+    // This ensures elements are available when the script executes the rest of the logic.
+    loadingScreen = document.getElementById('loading-screen');
+    introScreen = document.getElementById('intro-screen');
+    tutorialScreen = document.getElementById('tutorial-screen'); 
+    gameArea = document.getElementById('game-area');
+    gameMapElement = document.getElementById('game-map');
+    messageLog = document.getElementById('message-log');
+    playerStats = document.getElementById('player-stats');
+    playerHPElement = document.getElementById('player-hp');
+    playerMaxHPElement = document.getElementById('player-max-hp');
+    playerAttackElement = document.getElementById('player-attack');
+
+    // Battle elements
+    battleScreen = document.getElementById('battle-screen');
+    battleMessageLog = document.getElementById('battle-message-log');
+    battlePlayerHP = document.getElementById('battle-player-hp');
+    battleEnemyHP = document.getElementById('battle-enemy-hp');
+    enemyNameElement = document.getElementById('enemy-name');
+    battleMenuOptions = document.querySelectorAll('#battle-menu .menu-item');
+
+    // Menu elements
+    introOptions = document.querySelectorAll('#intro-options .menu-item'); 
+    tutorialOptions = document.querySelectorAll('#tutorial-menu .tut-option'); 
+    // ****************************************************
+    
     // Start the game loop
     raf = window.requestAnimationFrame(gameLoop);
     
@@ -457,6 +470,7 @@ function gameLoop() {
     if (gamepad) {
         
         // SNES D-PAD AXIS CHECK (iNNEXT-specific logic)
+        // Axes are usually -1 (left/up) to 1 (right/down)
         const axisX = gamepad.axes[0]; // Left/Right movement
         const axisY = gamepad.axes[1]; // Up/Down movement
         const axisThreshold = 0.5;
