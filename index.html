@@ -631,47 +631,72 @@
         });
 
         function gameLoop() {
-            const gamepad = navigator.getGamepads()[0]; 
-            if (gamepad) {
-                // FIXED SNES indices: We check for button 0 and 1, as SNES Select/Start/A/B buttons often map to 0 and 1.
-                // D-Pad buttons 12-15 are usually consistent.
-                const dpadUp = gamepad.buttons[12] && gamepad.buttons[12].pressed;
-                const dpadDown = gamepad.buttons[13] && gamepad.buttons[13].pressed;
-                const dpadLeft = gamepad.buttons[14] && gamepad.buttons[14].pressed;
-                const dpadRight = gamepad.buttons[15] && gamepad.buttons[15].pressed;
-                
-                // FIX 2: Simplified/adjusted select button check for common SNES/simple gamepad mapping
-                const selectButton = (gamepad.buttons[0] && gamepad.buttons[0].pressed) || 
-                                     (gamepad.buttons[1] && gamepad.buttons[1].pressed); 
-                
-                if (gameState.currentScreen === 'menu') {
-                    if (dpadUp && !inputDebounce.up) { navigateMenu(-1); inputDebounce.up = true; } else if (!dpadUp) { inputDebounce.up = false; }
-                    if (dpadDown && !inputDebounce.down) { navigateMenu(1); inputDebounce.down = true; } else if (!dpadDown) { inputDebounce.down = false; }
-                    if (selectButton && !inputDebounce.select) { selectMenuItem(); inputDebounce.select = true; } else if (!selectButton) { inputDebounce.select = false; }
-                } else if (gameState.currentScreen === 'game') {
-                    let dx = 0; let dy = 0; let moved = false;
-                    if (!inputDebounce.gameMove) {
-                        if (dpadUp) { dy = -1; moved = true; } else if (dpadDown) { dy = 1; moved = true; }
-                        else if (dpadLeft) { dx = -1; moved = true; } else if (dpadRight) { dx = 1; moved = true; }
-                        if (moved) { movePlayer(dx, dy); inputDebounce.gameMove = true; }
-                    } else if (!dpadUp && !dpadDown && !dpadLeft && !dpadRight) { inputDebounce.gameMove = false; }
-                } else if (gameState.currentScreen === 'battle') {
-                    if (battleState.turnPhase === 'player_action') {
-                        if (!inputDebounce.battleMove) {
-                            let direction = null;
-                            if (dpadUp) direction = 'UP'; else if (dpadDown) direction = 'DOWN';
-                            else if (dpadLeft) direction = 'LEFT'; else if (dpadRight) direction = 'RIGHT';
+    const gamepad = navigator.getGamepads()[0]; 
+    if (gamepad) {
+        
+        // --- SNES D-PAD AXIS CHECK ---
+        // Axes are usually -1 (left/up) to 1 (right/down)
+        const axisX = gamepad.axes[0]; // Left/Right movement
+        const axisY = gamepad.axes[1]; // Up/Down movement
+        
+        // Use a threshold to treat axis input like a digital D-pad
+        const axisThreshold = 0.5;
 
-                            if (direction) { navigateBattleMenu(direction); inputDebounce.battleMove = true; }
-                            else if (selectButton) { executeBattleTurn(battleState.menuIndex); inputDebounce.battleMove = true; }
-                        } else if (!dpadUp && !dpadDown && !dpadLeft && !dpadRight && !selectButton) {
-                            inputDebounce.battleMove = false;
-                        }
-                    }
+        const axisDpadUp = axisY < -axisThreshold;
+        const axisDpadDown = axisY > axisThreshold;
+        const axisDpadLeft = axisX < -axisThreshold;
+        const axisDpadRight = axisX > axisThreshold;
+        
+        // --- BUTTON CHECK (for D-pad if mapped as buttons 12-15 AND for action button) ---
+        // We still check 12-15 just in case, but prioritize the axis for movement
+        const buttonDpadUp = gamepad.buttons[12] && gamepad.buttons[12].pressed;
+        const buttonDpadDown = gamepad.buttons[13] && gamepad.buttons[13].pressed;
+        const buttonDpadLeft = gamepad.buttons[14] && gamepad.buttons[14].pressed;
+        const buttonDpadRight = gamepad.buttons[15] && gamepad.buttons[15].pressed;
+
+        // Combine D-pad checks (Axis wins if pressed)
+        const dpadUp = axisDpadUp || buttonDpadUp;
+        const dpadDown = axisDpadDown || buttonDpadDown;
+        const dpadLeft = axisDpadLeft || buttonDpadLeft;
+        const dpadRight = axisDpadRight || buttonDpadRight;
+        
+        // Select Button (A/B on SNES often map to 0 and 1)
+        const selectButton = (gamepad.buttons[0] && gamepad.buttons[0].pressed) || 
+                             (gamepad.buttons[1] && gamepad.buttons[1].pressed); 
+        
+        // --- GAME LOGIC ---
+
+        if (gameState.currentScreen === 'menu') {
+            if (dpadUp && !inputDebounce.up) { navigateMenu(-1); inputDebounce.up = true; } else if (!dpadUp) { inputDebounce.up = false; }
+            if (dpadDown && !inputDebounce.down) { navigateMenu(1); inputDebounce.down = true; } else if (!dpadDown) { inputDebounce.down = false; }
+            if (selectButton && !inputDebounce.select) { selectMenuItem(); inputDebounce.select = true; } else if (!selectButton) { inputDebounce.select = false; }
+        } else if (gameState.currentScreen === 'game') {
+            let dx = 0; let dy = 0; let moved = false;
+            // The logic here is slightly simpler because we only check for ANY D-pad press.
+            if (!inputDebounce.gameMove) {
+                if (dpadUp) { dy = -1; moved = true; } else if (dpadDown) { dy = 1; moved = true; }
+                else if (dpadLeft) { dx = -1; moved = true; } else if (dpadRight) { dx = 1; moved = true; }
+                if (moved) { movePlayer(dx, dy); inputDebounce.gameMove = true; }
+            } 
+            // Only release debounce when all D-pad inputs are lifted (axis and buttons)
+            else if (!dpadUp && !dpadDown && !dpadLeft && !dpadRight) { inputDebounce.gameMove = false; }
+        } else if (gameState.currentScreen === 'battle') {
+            if (battleState.turnPhase === 'player_action') {
+                if (!inputDebounce.battleMove) {
+                    let direction = null;
+                    if (dpadUp) direction = 'UP'; else if (dpadDown) direction = 'DOWN';
+                    else if (dpadLeft) direction = 'LEFT'; else if (dpadRight) direction = 'RIGHT';
+
+                    if (direction) { navigateBattleMenu(direction); inputDebounce.battleMove = true; }
+                    else if (selectButton) { executeBattleTurn(battleState.menuIndex); inputDebounce.battleMove = true; }
+                } else if (!dpadUp && !dpadDown && !dpadLeft && !dpadRight && !selectButton) {
+                    inputDebounce.battleMove = false;
                 }
             }
-            raf = window.requestAnimationFrame(gameLoop);
         }
+    }
+    raf = window.requestAnimationFrame(gameLoop);
+}
         
         // ====================================================================
         // INITIALIZATION
