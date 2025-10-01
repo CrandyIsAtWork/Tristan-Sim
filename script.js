@@ -8,14 +8,15 @@ const TILE_WALL = { type: 'wall' };
 const TILE_FLOOR = { type: 'floor' };
 const TILE_EXIT = { type: 'exit' }; 
 const NUM_ENEMIES = 3;
-const NUM_LOGOS = 5;
+const NUM_TREASURE_NODES = 3; // New constant for rare metal nodes
 
 // --- Game State Variables ---
 const gameState = {
     map: [],
-    player: { x: 0, y: 0, type: 'player', hp: 10, maxHp: 10, attack: 3 },
+    // UPDATED: Added level and xp state
+    player: { x: 0, y: 0, type: 'player', hp: 10, maxHp: 10, attack: 3, level: 1, xp: 0, xpToNextLevel: 10 },
     enemies: [],
-    logos: [],
+    treasureNodes: [], // NEW: Array to hold valuable metal positions
     currentScreen: 'loading', // 'loading', 'intro', 'tutorial', 'game', 'battle'
     currentEnemy: null,
 };
@@ -29,8 +30,10 @@ let raf; // Request Animation Frame reference
 let inputDebounce = { up: false, down: false, left: false, right: false, select: false, gameMove: false, battleMove: false };
 
 // --- DOM Elements (Declared as 'let' for assignment in init()) ---
+// These will be assigned their values inside the init function to ensure they load correctly.
 let loadingScreen, introScreen, tutorialScreen, gameArea, gameMapElement, messageLog, playerStats;
 let playerHPElement, playerMaxHPElement, playerAttackElement;
+let playerLevelElement, playerXPElement, playerXPNextElement; // NEW XP/Level elements
 
 // Battle elements
 let battleScreen, battleMessageLog, battlePlayerHP, battleEnemyHP, enemyNameElement, battleMenuOptions;
@@ -129,17 +132,18 @@ function placeEntities(map) {
                 hp: 5, 
                 maxHp: 5, 
                 attack: 2,
-                name: 'Cancer Blob'
+                name: 'Cancer Blob',
+                xpReward: 5 // XP granted upon defeat
             });
         }
     }
 
-    // 4. Place Certified Logos
-    gameState.logos = [];
-    for (let i = 0; i < NUM_LOGOS; i++) {
+    // 4. Place Treasure Nodes (Valuable Rare Metal)
+    gameState.treasureNodes = [];
+    for (let i = 0; i < NUM_TREASURE_NODES; i++) {
         if (floorTiles.length > 0) {
-            const logoPos = floorTiles.splice(Math.floor(Math.random() * floorTiles.length), 1)[0];
-            gameState.logos.push(logoPos);
+            const pos = floorTiles.splice(Math.floor(Math.random() * floorTiles.length), 1)[0];
+            gameState.treasureNodes.push({ x: pos.x, y: pos.y, type: 'rare-metal' });
         }
     }
 }
@@ -163,10 +167,10 @@ function renderMap() {
             let tileClasses = tileType === TILE_EXIT.type ? `${tileType} exit` : tileType;
             let tileHTML = `<div class="tile ${tileClasses}" style="left:${x*30}px; top:${y*30}px;">`;
 
-            // Render Certified Logos
-            const logo = gameState.logos.find(l => l.x === x && l.y === y);
-            if (logo) {
-                tileHTML += `<div class="entity certified-logo"></div>`;
+            // Render Treasure Node (Rare Metal)
+            const treasure = gameState.treasureNodes.find(t => t.x === x && t.y === y);
+            if (treasure) {
+                tileHTML += `<div class="entity treasure-node"></div>`; 
             }
             
             // Render Enemy
@@ -189,9 +193,13 @@ function renderMap() {
 }
 
 function updateStatsDisplay() {
+    // Player Stats
+    playerLevelElement.textContent = gameState.player.level;
     playerHPElement.textContent = gameState.player.hp;
     playerMaxHPElement.textContent = gameState.player.maxHp;
     playerAttackElement.textContent = gameState.player.attack;
+    playerXPElement.textContent = gameState.player.xp;
+    playerXPNextElement.textContent = gameState.player.xpToNextLevel;
 }
 
 // --- Player Movement ---
@@ -223,8 +231,15 @@ function movePlayer(dx, dy) {
             startBattle(gameState.currentEnemy);
             return;
         }
+        
+        // Check for Treasure Node Collection
+        const treasureIndex = gameState.treasureNodes.findIndex(t => t.x === newX && t.y === newY);
+        if (treasureIndex !== -1) {
+            gameState.treasureNodes.splice(treasureIndex, 1); // Remove node from the map
+            logMessage("You mined a chunk of rare certified metal! (No in-game effect yet!)");
+        }
 
-        // If no exit or enemy, move the player
+        // Move the player
         gameState.player.x = newX;
         gameState.player.y = newY;
         logMessage(`Tristan moved to (${newX}, ${newY}).`);
@@ -234,6 +249,27 @@ function movePlayer(dx, dy) {
 
     renderMap();
 }
+
+// --- Leveling System ---
+
+function checkLevelUp() {
+    while (gameState.player.xp >= gameState.player.xpToNextLevel) {
+        // Gain a Level!
+        gameState.player.level++;
+        gameState.player.xp -= gameState.player.xpToNextLevel;
+        
+        // Calculate next XP requirement (e.g., exponential growth)
+        gameState.player.xpToNextLevel = Math.floor(gameState.player.xpToNextLevel * 1.5);
+        
+        // Improve stats (Certified boost!)
+        gameState.player.maxHp += 3;
+        gameState.player.hp = gameState.player.maxHp; // Heal to full
+        gameState.player.attack += 1;
+        
+        logMessage(`*** TRISTAN LEVELED UP! Now Certified Level ${gameState.player.level}! ***`);
+    }
+}
+
 
 // --- Battle Logic ---
 
@@ -308,7 +344,7 @@ function playerAttack() {
 
 function enemyTurn() {
     const enemy = gameState.currentEnemy;
-    if (enemy.hp <= 0) return; // Should be checked by playerAttack, but good safety
+    if (enemy.hp <= 0) return; 
     
     const damage = enemy.attack;
     gameState.player.hp -= damage;
@@ -328,7 +364,13 @@ function enemyTurn() {
 function endBattle(result) {
     gameState.currentEnemy.hp = 0; // Ensure it's marked as defeated
     if (result === 'win') {
-        logMessage(`The ${gameState.currentEnemy.name} was certified and defeated!`);
+        const xpGained = gameState.currentEnemy.xpReward;
+        gameState.player.xp += xpGained;
+        
+        logMessage(`The ${gameState.currentEnemy.name} was certified and defeated! Tristan gained ${xpGained} XP!`);
+        
+        checkLevelUp(); // Check if player leveled up from the new XP
+        
     } else {
         logMessage(`Tristan was defeated and must restart his certified journey!`);
         // Reset player for the next game
@@ -408,6 +450,9 @@ function init() {
     playerHPElement = document.getElementById('player-hp');
     playerMaxHPElement = document.getElementById('player-max-hp');
     playerAttackElement = document.getElementById('player-attack');
+    playerLevelElement = document.getElementById('player-level'); // NEW
+    playerXPElement = document.getElementById('player-xp'); // NEW
+    playerXPNextElement = document.getElementById('player-xp-next'); // NEW
 
     // Battle elements
     battleScreen = document.getElementById('battle-screen');
