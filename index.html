@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tristan Certified Roguelike - Image Assets</title>
+    
+    <style>
+        /* Base styles remain the same */
+        body {
+            margin: 0;
+            font-family: sans-serif; /* Switched font for cleaner look */
+            color: #fff;
+            background-color: #000;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* Screen Management */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+        .hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        /* Loading and Menu Styles (retained) */
+        #loading-screen h1 { font-size: 3em; }
+        .loader { 
+            border: 8px solid #333; border-top: 8px solid #f39c12; border-radius: 50%; 
+            width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 20px 0;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #start-menu h1 { font-size: 2.5em; margin-bottom: 40px; }
+        #menu-options { list-style: none; padding: 0; margin: 0; }
+        .menu-item { font-size: 1.5em; padding: 10px 20px; margin: 10px 0; cursor: pointer; border: 2px solid transparent; }
+        .menu-item.selected { color: #f39c12; border: 2px solid #f39c12; background-color: rgba(243, 156, 18, 0.1); }
+        .instruction { margin-top: 50px; font-size: 0.9em; color: #aaa; }
+
+        /* --- GAME MAP STYLING FOR IMAGES --- */
+        
+        /* Define tile size (e.g., 32x32 pixels) */
+        :root {
+            --tile-size: 32px;
+        }
+
+        #game-map {
+            display: grid;
+            grid-template-columns: repeat(var(--map-width), var(--tile-size)); 
+            grid-template-rows: repeat(var(--map-height), var(--tile-size));
+            margin-top: 20px;
+            border: 2px solid #f39c12;
+            box-sizing: content-box; /* Include border in total size */
+        }
+        
+        .tile {
+            width: var(--tile-size);
+            height: var(--tile-size);
+            background-size: cover;
+            position: relative; /* Needed for entities */
+        }
+
+        /* Tile Textures */
+        .tile.wall { 
+            background-color: #555; /* Default wall color (can replace with wall.png) */
+        }
+        .tile.floor { 
+            background-image: url('floor.png'); 
+            background-color: #333; /* Fallback color */
+        }
+        
+        /* Entity Layer */
+        .entity {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        /* Specific Entity Images */
+        .entity.player { 
+            background-image: url('player.png');
+            z-index: 10; /* Ensure player is on top */
+        }
+        .entity.enemy { 
+            background-image: url('enemy.png');
+            z-index: 5; /* Ensure enemy is on top of floor */
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen" class="screen">
+        <h1>Loading Tristan Certified...</h1>
+        <div class="loader"></div> 
+        <p>Preparing the Certified experience...</p>
+    </div>
+
+    <div id="start-menu" class="screen hidden">
+        <h1>Certified Beginnings</h1>
+        <ul id="menu-options">
+            <li class="menu-item selected">Start Game</li>
+            <li class="menu-item">Options</li>
+            <li class="menu-item">Exit</li>
+        </ul>
+        <p class="instruction">Use D-Pad Up/Down or **WASD** and 'A'/'X' or **ENTER** to select.</p>
+    </div>
+    
+    <div id="game-area" class="screen hidden">
+        <h1>Certified Dungeon</h1>
+        <div id="game-map">
+            </div>
+        <div id="message-log" style="margin-top: 20px; color: #aaa;"></div>
+        <div id="player-stats" style="margin-top: 10px; color: #f39c12;">HP: 10</div>
+    </div>
+    
+    <script>
+        // --- Game Constants ---
+        const MAP_WIDTH = 20;
+        const MAP_HEIGHT = 20;
+        const TILE_WALL = { type: 'wall' };
+        const TILE_FLOOR = { type: 'floor' };
+        const NUM_ENEMIES = 3;
+
+        // --- Game State Variables ---
+        const gameState = {
+            map: [], // 2D array of map tiles
+            player: { x: 0, y: 0, type: 'player', hp: 10 },
+            enemies: [],
+            currentScreen: 'loading'
+        };
+
+        // --- DOM Elements ---
+        const loadingScreen = document.getElementById('loading-screen');
+        const startMenu = document.getElementById('start-menu');
+        const gameArea = document.getElementById('game-area');
+        const gameMapElement = document.getElementById('game-map');
+        const messageLog = document.getElementById('message-log');
+        const playerStats = document.getElementById('player-stats');
+        const menuItems = document.querySelectorAll('#menu-options .menu-item');
+        let selectedIndex = 0;
+        
+        // --- Gamepad Variables ---
+        let gamePads = {};      
+        let raf;                
+        let inputDebounce = {}; 
+
+        // ====================================================================
+        // UTILITY FUNCTIONS
+        // ====================================================================
+
+        function logMessage(msg) {
+            messageLog.textContent = `[MESSAGE] ${msg}`;
+        }
+        
+        function updatePlayerStats() {
+            playerStats.textContent = `HP: ${gameState.player.hp}`;
+            if (gameState.player.hp <= 0) {
+                logMessage("You have been defeated... Game Over.");
+                // Future: Add game over screen transition
+            }
+        }
+
+
+        // ====================================================================
+        // MAP GENERATION LOGIC (Drunkard's Walk)
+        // ====================================================================
+
+        function initMap() {
+            // 1. Fill map with walls
+            gameState.map = Array.from({ length: MAP_HEIGHT }, () => 
+                Array(MAP_WIDTH).fill(TILE_WALL.type)
+            );
+
+            // 2. Drunkard's Walk to carve out floors
+            let x = Math.floor(MAP_WIDTH / 2);
+            let y = Math.floor(MAP_HEIGHT / 2);
+            let floorsCreated = 0;
+            const targetFloors = MAP_WIDTH * MAP_HEIGHT * 0.4; 
+
+            while (floorsCreated < targetFloors) {
+                if (gameState.map[y][x] === TILE_WALL.type) {
+                    gameState.map[y][x] = TILE_FLOOR.type;
+                    floorsCreated++;
+                }
+                
+                const dir = Math.floor(Math.random() * 4);
+                
+                switch (dir) {
+                    case 0: x = Math.min(x + 1, MAP_WIDTH - 2); break;
+                    case 1: x = Math.max(x - 1, 1); break;
+                    case 2: y = Math.min(y + 1, MAP_HEIGHT - 2); break;
+                    case 3: y = Math.max(y - 1, 1); break;
+                }
+            }
+
+            // 3. Place Entities
+            placeEntities(gameState.map);
+        }
+
+        function placeEntities(map) {
+            let floorTiles = [];
+            for (let y = 1; y < MAP_HEIGHT - 1; y++) {
+                for (let x = 1; x < MAP_WIDTH - 1; x++) {
+                    if (map[y][x] === TILE_FLOOR.type) {
+                        floorTiles.push({ x, y });
+                    }
+                }
+            }
+            
+            // Randomly place Player
+            const playerPos = floorTiles.splice(Math.floor(Math.random() * floorTiles.length), 1)[0];
+            gameState.player.x = playerPos.x;
+            gameState.player.y = playerPos.y;
+
+            // Randomly place Enemies
+            gameState.enemies = [];
+            for (let i = 0; i < NUM_ENEMIES; i++) {
+                if (floorTiles.length > 0) {
+                    const enemyPos = floorTiles.splice(Math.floor(Math.random() * floorTiles.length), 1)[0];
+                    gameState.enemies.push({ x: enemyPos.x, y: enemyPos.y, type: 'enemy', hp: 3 });
+                }
+            }
+        }
+
+        // ====================================================================
+        // GAME LOGIC AND RENDERING (Updated to use images)
+        // ====================================================================
+        
+        function updateGame() {
+            moveEnemies();
+            renderMap();
+        }
+
+        function moveEnemies() {
+            gameState.enemies.forEach(enemy => {
+                // If enemy is defeated, skip
+                if (enemy.hp <= 0) return; 
+
+                const dx = Math.floor(Math.random() * 3) - 1;
+                const dy = Math.floor(Math.random() * 3) - 1; 
+
+                const newX = enemy.x + dx;
+                const newY = enemy.y + dy;
+
+                // Simple check: don't move onto another entity or wall
+                if (isWalkable(newX, newY) && !isOccupiedByOtherEntity(newX, newY, enemy)) {
+                    enemy.x = newX;
+                    enemy.y = newY;
+                }
+            });
+        }
+        
+        function movePlayer(dx, dy) {
+            const newX = gameState.player.x + dx;
+            const newY = gameState.player.y + dy;
+
+            if (isWalkable(newX, newY)) {
+                // Check for enemy collision (INITIATE COMBAT)
+                const enemy = gameState.enemies.find(e => e.x === newX && e.y === newY);
+                
+                if (enemy && enemy.hp > 0) {
+                    // Simple combat: player hits enemy, enemy hits player
+                    logMessage(`@ attacks E at (${newX}, ${newY})!`);
+                    enemy.hp -= 1; // Player deals 1 damage
+                    
+                    if (enemy.hp > 0) {
+                         gameState.player.hp -= 1; // Enemy deals 1 damage back
+                         logMessage(`E hits back! Player HP: ${gameState.player.hp}`);
+                    } else {
+                        logMessage("Enemy defeated!");
+                    }
+                    
+                    updatePlayerStats();
+                } else {
+                    // Move the player
+                    gameState.player.x = newX;
+                    gameState.player.y = newY;
+                }
+                
+                updateGame();
+            }
+        }
+
+        function isWalkable(x, y) {
+            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return false;
+            return gameState.map[y][x] === TILE_FLOOR.type;
+        }
+
+        function isOccupiedByOtherEntity(x, y, self) {
+            // Check if coordinates are occupied by an enemy other than 'self'
+            const enemyOccupied = gameState.enemies.some(e => e !== self && e.x === x && e.y === y && e.hp > 0);
+            
+            // Check if coordinates are occupied by the player
+            const playerOccupied = (self.type !== 'player' && gameState.player.x === x && gameState.player.y === y);
+            
+            return enemyOccupied || playerOccupied;
+        }
+
+        function renderMap() {
+            gameMapElement.style.setProperty('--map-width', MAP_WIDTH);
+            gameMapElement.style.setProperty('--map-height', MAP_HEIGHT);
+
+            let mapHTML = '';
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    
+                    const tileType = gameState.map[y][x];
+                    let tileHTML = `<div class="tile ${tileType}">`;
+                    
+                    // Check for Entities
+                    
+                    // Player
+                    if (gameState.player.x === x && gameState.player.y === y) {
+                        if (gameState.player.hp > 0) {
+                            tileHTML += `<div class="entity player"></div>`;
+                        } else {
+                             // If player is dead, show floor tile
+                        }
+                    } 
+                    
+                    // Enemy
+                    const enemy = gameState.enemies.find(e => e.x === x && e.y === y);
+                    if (enemy && enemy.hp > 0) {
+                        tileHTML += `<div class="entity enemy"></div>`;
+                    }
+
+                    tileHTML += `</div>`;
+                    mapHTML += tileHTML;
+                }
+            }
+            gameMapElement.innerHTML = mapHTML;
+        }
+
+
+        // ====================================================================
+        // SCREEN AND MENU LOGIC (Retained)
+        // ====================================================================
+        
+        function showScreen(screenElement) {
+            loadingScreen.classList.add('hidden');
+            startMenu.classList.add('hidden');
+            gameArea.classList.add('hidden');
+            
+            screenElement.classList.remove('hidden');
+            
+            if (screenElement === loadingScreen) gameState.currentScreen = 'loading';
+            else if (screenElement === startMenu) gameState.currentScreen = 'menu';
+            else if (screenElement === gameArea) gameState.currentScreen = 'game';
+        }
+
+        function startGame() {
+            logMessage("The adventure begins!");
+            gameState.player.hp = 10; // Reset HP for new game
+            initMap(); 
+            updatePlayerStats();
+            renderMap();
+            showScreen(gameArea);
+        }
+        
+        function updateMenuSelection() {
+            menuItems.forEach(item => item.classList.remove('selected'));
+            menuItems[selectedIndex].classList.add('selected');
+        }
+
+        function navigateMenu(direction) {
+            if (gameState.currentScreen !== 'menu') return;
+            selectedIndex = (selectedIndex + direction + menuItems.length) % menuItems.length;
+            updateMenuSelection();
+        }
+
+        function selectMenuItem() {
+            if (gameState.currentScreen !== 'menu') return;
+            const selectedText = menuItems[selectedIndex].textContent;
+            switch (selectedText) {
+                case 'Start Game': startGame(); break;
+                case 'Options': logMessage('Options screen not implemented yet!'); break;
+                case 'Exit': logMessage('Exiting...'); break;
+            }
+        }
+        
+        // ====================================================================
+        // INPUT HANDLERS (Keyboard and Gamepad)
+        // ====================================================================
+
+        document.addEventListener('keydown', (event) => {
+            if (gameState.currentScreen === 'menu') {
+                if (event.key === 'w' || event.key === 'ArrowUp') { navigateMenu(-1); }
+                else if (event.key === 's' || event.key === 'ArrowDown') { navigateMenu(1); }
+                else if (event.key === 'Enter') { selectMenuItem(); }
+            } else if (gameState.currentScreen === 'game') {
+                let dx = 0;
+                let dy = 0;
+                
+                if (event.key === 'w' || event.key === 'ArrowUp') dy = -1;
+                else if (event.key === 's' || event.key === 'ArrowDown') dy = 1;
+                else if (event.key === 'a' || event.key === 'ArrowLeft') dx = -1;
+                else if (event.key === 'd' || event.key === 'ArrowRight') dx = 1;
+                
+                if (dx !== 0 || dy !== 0) {
+                    movePlayer(dx, dy);
+                    event.preventDefault(); 
+                }
+            }
+        });
+
+        function gameLoop() {
+            const gamepad = navigator.getGamepads()[0]; 
+
+            if (gamepad) {
+                const dpadUp = gamepad.buttons[12] && gamepad.buttons[12].pressed;
+                const dpadDown = gamepad.buttons[13] && gamepad.buttons[13].pressed;
+                const dpadLeft = gamepad.buttons[14] && gamepad.buttons[14].pressed;
+                const dpadRight = gamepad.buttons[15] && gamepad.buttons[15].pressed;
+                const selectButton = (gamepad.buttons[0] && gamepad.buttons[0].pressed) || 
+                                     (gamepad.buttons[2] && gamepad.buttons[2].pressed); 
+
+                if (gameState.currentScreen === 'menu') {
+                    if (dpadUp && !inputDebounce.up) { navigateMenu(-1); inputDebounce.up = true; } 
+                    else if (!dpadUp) { inputDebounce.up = false; }
+                    
+                    if (dpadDown && !inputDebounce.down) { navigateMenu(1); inputDebounce.down = true; } 
+                    else if (!dpadDown) { inputDebounce.down = false; }
+                    
+                    if (selectButton && !inputDebounce.select) { selectMenuItem(); inputDebounce.select = true; } 
+                    else if (!selectButton) { inputDebounce.select = false; }
+                    
+                } else if (gameState.currentScreen === 'game') {
+                    let dx = 0;
+                    let dy = 0;
+                    let moved = false;
+                    
+                    if (!inputDebounce.gameMove) {
+                        if (dpadUp) { dy = -1; moved = true; }
+                        else if (dpadDown) { dy = 1; moved = true; }
+                        else if (dpadLeft) { dx = -1; moved = true; }
+                        else if (dpadRight) { dx = 1; moved = true; }
+
+                        if (moved) {
+                            movePlayer(dx, dy);
+                            inputDebounce.gameMove = true;
+                        }
+                    } else if (!dpadUp && !dpadDown && !dpadLeft && !dpadRight) {
+                        inputDebounce.gameMove = false;
+                    }
+                }
+            }
+
+            raf = window.requestAnimationFrame(gameLoop);
+        }
+        
+        // ====================================================================
+        // INITIALIZATION
+        // ====================================================================
+
+        function init() {
+            setTimeout(() => {
+                showScreen(startMenu);
+                updateMenuSelection();
+            }, 3000); 
+            
+            const initialGamepads = navigator.getGamepads();
+            for (const pad of initialGamepads) {
+                if (pad) { gamePads[pad.index] = pad; }
+            }
+            if (Object.keys(gamePads).length > 0) { gameLoop(); } 
+            
+            updatePlayerStats(); // Display initial HP
+        }
+
+        init();
+    </script>
+</body>
+</html>
