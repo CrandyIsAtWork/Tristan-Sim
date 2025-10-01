@@ -142,7 +142,13 @@ body {
 }
 .entity.player { background-image: url('IMAGES/Player.png'); z-index: 20; }
 .entity.enemy-cancer-blob { background-image: url('IMAGES/CancerBlob.png'); z-index: 10; }
-.entity.certified-logo { background-image: url('IMAGES/Certified.png'); z-index: 15; opacity: 0.8; }
+/* NEW: Style for the Treasure Node */
+.entity.treasure-node { 
+    background-image: url('IMAGES/RareMetal.png'); /* You'll need this image! */
+    background-color: #f1c40f; 
+    opacity: 0.9;
+    z-index: 15;
+}
 
 
 /* Battle Screen */
