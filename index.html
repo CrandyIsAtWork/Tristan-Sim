@@ -2,20 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Tristan Certified Roguelike - Image Assets</title>
+    <title>Tristan Certified Roguelike - Image Assets v5.0</title>
     
     <style>
         /* Base styles remain the same */
         body {
-            margin: 0;
-            font-family: sans-serif; /* Switched font for cleaner look */
-            color: #fff;
-            background-color: #000;
-            text-align: center;
-            overflow: hidden;
+            margin: 0; font-family: sans-serif; color: #fff; background-color: #000;
+            text-align: center; overflow: hidden;
         }
-
-        /* Screen Management */
         .screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -38,7 +32,7 @@
 
         /* --- GAME MAP STYLING FOR IMAGES --- */
         
-        /* Define tile size (e.g., 32x32 pixels) */
+        /* Define tile size */
         :root {
             --tile-size: 32px;
         }
@@ -49,22 +43,23 @@
             grid-template-rows: repeat(var(--map-height), var(--tile-size));
             margin-top: 20px;
             border: 2px solid #f39c12;
-            box-sizing: content-box; /* Include border in total size */
+            box-sizing: content-box;
         }
         
         .tile {
             width: var(--tile-size);
             height: var(--tile-size);
             background-size: cover;
-            position: relative; /* Needed for entities */
+            position: relative;
         }
 
-        /* Tile Textures */
+        /* Tile Textures - UPDATED PATHS */
         .tile.wall { 
-            background-color: #555; /* Default wall color (can replace with wall.png) */
+            background-color: #555; /* Solid wall color for now */
         }
         .tile.floor { 
-            background-image: url('floor.png'); 
+            /* Floor is now STONE */
+            background-image: url('IMAGES/Stone.png'); 
             background-color: #333; /* Fallback color */
         }
         
@@ -78,14 +73,14 @@
             background-position: center;
         }
         
-        /* Specific Entity Images */
+        /* Specific Entity Images - UPDATED PATHS */
         .entity.player { 
-            background-image: url('player.png');
-            z-index: 10; /* Ensure player is on top */
+            background-image: url('IMAGES/Tristan.png');
+            z-index: 10;
         }
         .entity.enemy { 
-            background-image: url('enemy.png');
-            z-index: 5; /* Ensure enemy is on top of floor */
+            background-image: url('IMAGES/enemy.png'); /* Assuming enemy.png is also in IMAGES */
+            z-index: 5;
         }
         
     </style>
@@ -121,7 +116,7 @@
         const MAP_WIDTH = 20;
         const MAP_HEIGHT = 20;
         const TILE_WALL = { type: 'wall' };
-        const TILE_FLOOR = { type: 'floor' };
+        const TILE_FLOOR = { type: 'floor' }; // This is currently mapped to Stone.png via CSS
         const NUM_ENEMIES = 3;
 
         // --- Game State Variables ---
@@ -226,7 +221,7 @@
         }
 
         // ====================================================================
-        // GAME LOGIC AND RENDERING (Updated to use images)
+        // GAME LOGIC AND RENDERING
         // ====================================================================
         
         function updateGame() {
@@ -236,7 +231,6 @@
 
         function moveEnemies() {
             gameState.enemies.forEach(enemy => {
-                // If enemy is defeated, skip
                 if (enemy.hp <= 0) return; 
 
                 const dx = Math.floor(Math.random() * 3) - 1;
@@ -245,7 +239,6 @@
                 const newX = enemy.x + dx;
                 const newY = enemy.y + dy;
 
-                // Simple check: don't move onto another entity or wall
                 if (isWalkable(newX, newY) && !isOccupiedByOtherEntity(newX, newY, enemy)) {
                     enemy.x = newX;
                     enemy.y = newY;
@@ -258,16 +251,15 @@
             const newY = gameState.player.y + dy;
 
             if (isWalkable(newX, newY)) {
-                // Check for enemy collision (INITIATE COMBAT)
                 const enemy = gameState.enemies.find(e => e.x === newX && e.y === newY);
                 
                 if (enemy && enemy.hp > 0) {
                     // Simple combat: player hits enemy, enemy hits player
-                    logMessage(`@ attacks E at (${newX}, ${newY})!`);
-                    enemy.hp -= 1; // Player deals 1 damage
+                    logMessage(`Tristan attacks E at (${newX}, ${newY})!`);
+                    enemy.hp -= 1;
                     
                     if (enemy.hp > 0) {
-                         gameState.player.hp -= 1; // Enemy deals 1 damage back
+                         gameState.player.hp -= 1;
                          logMessage(`E hits back! Player HP: ${gameState.player.hp}`);
                     } else {
                         logMessage("Enemy defeated!");
@@ -275,7 +267,6 @@
                     
                     updatePlayerStats();
                 } else {
-                    // Move the player
                     gameState.player.x = newX;
                     gameState.player.y = newY;
                 }
@@ -290,12 +281,8 @@
         }
 
         function isOccupiedByOtherEntity(x, y, self) {
-            // Check if coordinates are occupied by an enemy other than 'self'
             const enemyOccupied = gameState.enemies.some(e => e !== self && e.x === x && e.y === y && e.hp > 0);
-            
-            // Check if coordinates are occupied by the player
             const playerOccupied = (self.type !== 'player' && gameState.player.x === x && gameState.player.y === y);
-            
             return enemyOccupied || playerOccupied;
         }
 
@@ -310,20 +297,14 @@
                     const tileType = gameState.map[y][x];
                     let tileHTML = `<div class="tile ${tileType}">`;
                     
-                    // Check for Entities
-                    
                     // Player
-                    if (gameState.player.x === x && gameState.player.y === y) {
-                        if (gameState.player.hp > 0) {
-                            tileHTML += `<div class="entity player"></div>`;
-                        } else {
-                             // If player is dead, show floor tile
-                        }
+                    if (gameState.player.x === x && gameState.player.y === y && gameState.player.hp > 0) {
+                        tileHTML += `<div class="entity player"></div>`;
                     } 
                     
                     // Enemy
                     const enemy = gameState.enemies.find(e => e.x === x && e.y === y);
-                    if (enemy && enemy.hp > 0) {
+                    if (enemy && enemy.hp > 0 && !(gameState.player.x === x && gameState.player.y === y)) {
                         tileHTML += `<div class="entity enemy"></div>`;
                     }
 
@@ -353,7 +334,7 @@
 
         function startGame() {
             logMessage("The adventure begins!");
-            gameState.player.hp = 10; // Reset HP for new game
+            gameState.player.hp = 10;
             initMap(); 
             updatePlayerStats();
             renderMap();
@@ -467,7 +448,7 @@
             }
             if (Object.keys(gamePads).length > 0) { gameLoop(); } 
             
-            updatePlayerStats(); // Display initial HP
+            updatePlayerStats();
         }
 
         init();
