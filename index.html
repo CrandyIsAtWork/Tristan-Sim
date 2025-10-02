@@ -1,100 +1,76 @@
 <!doctype html>
-<!--
-  Tristan Simulator - starter
-  Single-file HTML/CSS/JS starter. Place this file at your repo root and keep
-  the following folders as you described:
-    /IMAGES/Grass.jpg
-    /IMAGES/Stone.jpg
-    /IMAGES/Tristan.png
-    /IMAGES/WalterTut.png
-    /IMAGES/enemy.png
-    /IMAGES/Certified.png
-    /MUSIC/TitleTheme.ogg
-    /MUSIC/DungeonTheme.ogg
-
-  Features implemented:
-  - Start menu with NEW GAME, LOAD GAME, TUTORIAL
-  - Procedural dungeon type (different tints/overlays on Stone.jpg)
-  - Simple explore mechanic that can trigger random encounters
-  - Battle UI like a Pokémon/Undertale hybrid (Fight / Act / Item / Flee)
-  - Tutorial screen with Walter Tut image and controls
-  - Save / Load via localStorage
-  - Audio for title and dungeon
-
-  This is a starter. Expand enemies, items, sounds, and tile-based movement later.
--->
-
+<!-- Full-feature Tristan Simulator (combined): WASD ASCII map + sprite visuals + Pokémon-style battles + Walter tutorial + music + saves -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tristan Simulator</title>
+  <title>Tristan Simulator — Full</title>
   <style>
     :root{
-      --ui-bg: #071028;
-      --panel: rgba(0,0,0,0.55);
-      --accent: #caa53a;
-      --font: system-ui, "Segoe UI", Roboto, Arial;
+      --bg:#071028; --panel:rgba(0,0,0,0.55); --accent:#caa53a; --font:system-ui,Segoe UI,Roboto,Arial;
     }
-    html,body{height:100%;margin:0;font-family:var(--font);background:#000;color:#eef}
-    #app{height:100%;display:grid;place-items:center}
+    html,body{height:100%;margin:0;background:#000;color:#eef;font-family:var(--font)}
+    #app{height:100%;display:grid;place-items:center;padding:12px}
 
-    /* Main game area */
-    .screen{width:960px;max-width:96vw;height:600px;position:relative;border-radius:12px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.7)}
+    /* Container */
+    .screen{width:960px;max-width:96vw;height:680px;position:relative;border-radius:12px;overflow:hidden;box-shadow:0 14px 50px rgba(0,0,0,0.7);background:linear-gradient(#071028,#03030a)}
 
-    /* Title screen */
-    #title-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;background:black}
-    #title-screen .logo{font-size:48px;font-weight:800;margin-bottom:8px}
-    #title-screen .subtitle{opacity:0.8;margin-bottom:16px}
+    /* Title */
+    #title-screen{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .logo{font-size:48px;font-weight:900;margin-bottom:8px}
+    .subtitle{opacity:0.9;margin-bottom:14px}
     .menu{display:flex;flex-direction:column;gap:10px}
-    .btn{background:var(--panel);padding:12px 24px;border-radius:8px;border:2px solid rgba(255,255,255,0.03);cursor:pointer;min-width:200px;text-align:center}
+    .btn{background:var(--panel);padding:12px 20px;border-radius:10px;cursor:pointer;min-width:220px;text-align:center;border:2px solid rgba(255,255,255,0.03)}
     .btn:hover{transform:translateY(-3px)}
 
-    /* Game view */
-    #game-view{display:none;height:100%;background:#111}
-    .game-top{height:360px;display:flex}
-    .play-area{flex:1;background-image:url('IMAGES/Stone.jpg');background-size:cover;background-position:center;position:relative}
-    /* tint overlay used to change dungeon type */
+    /* Game main split */
+    #game-view{display:none;height:100%;position:relative}
+    .top{display:flex;height:360px}
+    /* play area (visual) */
+    .play-area{flex:1;background-image:url('IMAGES/Stone.jpg');background-size:cover;background-position:center;position:relative;overflow:hidden}
     .tint-overlay{position:absolute;inset:0;mix-blend-mode:multiply;pointer-events:none}
+    /* ascii-map overlay */
+    .ascii-panel{position:absolute;right:12px;top:12px;background:rgba(0,0,0,0.6);padding:8px;border-radius:8px;font-family:monospace;font-size:13px;color:#dfe}
+    pre#ascii-map{margin:0;line-height:1;letter-spacing:0.5px}
+
+    /* player sprite (visual) */
+    .sprite{position:absolute;width:32px;height:32px;pointer-events:none;background:url('IMAGES/Tristan.png') no-repeat center/contain}
+    .enemy-sprite{position:absolute;width:48px;height:48px;pointer-events:none;background:url('IMAGES/enemy.png') no-repeat center/contain;filter:none}
+
+    /* sky / outside panel */
     .sky-area{width:300px;background-image:url('IMAGES/Grass.jpg');background-size:cover;background-position:center}
 
-    .hud{height:240px;background:linear-gradient(to top, rgba(0,0,0,0.65), transparent);position:absolute;left:10px;bottom:10px;padding:12px;border-radius:8px;color:#fff}
-
-    /* Bottom panel */
+    /* HUD & panels */
+    .hud{position:absolute;left:12px;bottom:12px;padding:12px;border-radius:10px;background:linear-gradient(to top, rgba(0,0,0,0.6), transparent);color:#fff}
     .panel{height:240px;background:linear-gradient(180deg,rgba(0,0,0,0.65),#000);display:flex;gap:12px;padding:12px}
     .left-col{width:360px;background:var(--panel);padding:12px;border-radius:8px}
     .right-col{flex:1;background:var(--panel);padding:12px;border-radius:8px;display:flex;flex-direction:column}
+    .muted{opacity:0.75;font-size:13px}
 
-    .currency{display:flex;gap:10px;align-items:center}
-    .currency img{width:28px;height:28px}
-
-    /* Battle screen overlay */
-    #battle-overlay{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.6));display:none;align-items:flex-end;padding:24px}
-    .battle-box{width:100%;background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;display:flex;gap:12px;align-items:center}
-    .battle-images{display:flex;gap:20px;align-items:center}
-    .battle-images img{width:180px;height:140px;object-fit:contain}
-
-    .choices{margin-left:auto;display:flex;gap:8px}
-    .choice{background:rgba(0,0,0,0.5);padding:10px 14px;border-radius:6px;cursor:pointer}
+    /* Battle overlay */
+    #battle-overlay{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.75));display:none;flex-direction:column;justify-content:flex-end;align-items:center;padding:20px;z-index:60}
+    .battle-stage{width:92%;max-width:860px;background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+    .battle-images{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:12px}
+    .battle-images img{display:block;max-width:260px;max-height:160px;object-fit:contain}
+    .battle-text{background:rgba(0,0,0,0.75);padding:10px;border-radius:8px;color:#fff;min-height:48px;display:flex;align-items:center}
+    .battle-ui{display:flex;gap:8px;justify-content:space-between}
+    .choice{background:rgba(0,0,0,0.5);padding:10px 14px;border-radius:6px;cursor:pointer;flex:1;text-align:center}
     .choice:hover{background:rgba(255,255,255,0.06)}
 
-    /* Tutorial */
-    #tutorial{display:none;padding:16px}
-    #tutorial img{width:160px}
-
-    /* small text */
-    .muted{opacity:0.7;font-size:13px}
+    /* shake (class) */
+    @keyframes shakeX{0%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-6px)}100%{transform:translateX(0)}}
+    .shake{animation:shakeX 420ms ease-in-out}
 
     /* simple responsive */
-    @media (max-width:720px){.screen{height:86vh}}
+    @media (max-width:820px){.screen{height:92vh}.sky-area{display:none}}
   </style>
 </head>
 <body>
   <div id="app">
-    <div class="screen" id="screen">
+    <div class="screen">
 
       <!-- TITLE -->
-      <div id="title-screen" class="screen-child">
+      <div id="title-screen">
         <div class="logo">Tristan Simulator</div>
         <div class="subtitle">Wake. Fight. Rule again.</div>
         <div class="menu">
@@ -102,40 +78,48 @@
           <div class="btn" id="btn-load">LOAD GAME</div>
           <div class="btn" id="btn-tut">TUTORIAL</div>
         </div>
+        <div style="margin-top:16px;">
+          <label style="color:#ccc"><input id="toggle-music-title" type="checkbox" checked> Music</label>
+        </div>
         <audio id="title-audio" loop src="MUSIC/TitleTheme.ogg"></audio>
       </div>
 
       <!-- GAME -->
       <div id="game-view">
-        <div style="display:flex;height:360px;">
+        <div class="top">
           <div class="play-area" id="play-area">
             <div class="tint-overlay" id="tint-overlay"></div>
-            <div class="hud" id="top-hud">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div>
-                  <div><strong id="player-name">Tristan</strong> <span class="muted">Lv <span id="player-lvl">1</span></span></div>
-                  <div class="muted">HP: <span id="player-hp">10</span>/<span id="player-maxhp">10</span></div>
-                </div>
-                <div class="currency"><img src="IMAGES/Certified.png" alt="coin"><div id="currency-amt">0</div></div>
-              </div>
+
+            <!-- Visual sprites (absolute) -->
+            <div id="visual-enemy" class="enemy-sprite" style="left:50%;top:40px;transform:translateX(-50%);"></div>
+            <div id="visual-player" class="sprite" style="left:50%;bottom:40px;transform:translateX(-50%);"></div>
+
+            <!-- ASCII map panel -->
+            <div class="ascii-panel">
+              <div style="font-weight:700;margin-bottom:6px">ASCII MAP</div>
+              <pre id="ascii-map"></pre>
+              <div style="margin-top:6px;font-size:12px;color:#bcd">Use WASD to move — encounters happen on floor tiles</div>
             </div>
           </div>
+
           <div class="sky-area" id="sky-area"></div>
         </div>
 
+        <!-- bottom UI -->
         <div class="panel">
           <div class="left-col">
-            <div><strong>Actions</strong></div>
-            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-              <button id="btn-explore">Explore</button>
-              <button id="btn-rest">Rest</button>
-              <button id="btn-save">Save</button>
-              <button id="btn-return">Return to Menu</button>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div><strong id="player-name">Tristan</strong><div class="muted">Lv <span id="player-lvl">1</span></div></div>
+              <div class="currency" style="display:flex;align-items:center;gap:8px"><img src="IMAGES/Certified.png" width="28" alt="coin"><div id="currency-amt">0</div></div>
             </div>
 
             <div style="margin-top:12px">
-              <div class="muted">Current Dungeon:</div>
-              <div id="dungeon-name">Stone Caves</div>
+              <div class="muted">HP</div>
+              <div id="hpbar" style="margin-top:6px"> <span id="player-hp">10</span> / <span id="player-maxhp">10</span></div>
+              <div style="margin-top:10px" class="muted">XP / Level</div>
+              <div id="xpinfo" style="margin-top:6px">0 XP</div>
+              <div style="margin-top:10px" class="muted">Inventory</div>
+              <div id="inv" style="margin-top:6px">Potions: <span id="potions">0</span></div>
             </div>
           </div>
 
@@ -147,34 +131,40 @@
               </div>
               <div style="text-align:right">
                 <div class="muted">Audio</div>
-                <label><input type="checkbox" id="toggle-music" checked> Music</label>
+                <label style="display:block;margin-top:6px"><input id="toggle-music" type="checkbox" checked> Music</label>
                 <div style="margin-top:8px" class="muted">Save slot: <span id="save-slot">1</span></div>
               </div>
             </div>
 
             <div style="margin-top:auto;display:flex;gap:8px;align-items:center">
-              <div class="muted">Tip: Use Explore to move. Encounters happen randomly.</div>
+              <button class="btn" id="btn-save">Save</button>
+              <button class="btn" id="btn-load-quick">Load</button>
+              <button class="btn" id="btn-rest">Rest</button>
+              <button class="btn" id="btn-return">Return to Menu</button>
             </div>
           </div>
         </div>
 
         <!-- Battle overlay -->
         <div id="battle-overlay">
-          <div class="battle-box">
+          <div class="battle-stage">
             <div class="battle-images">
               <div style="text-align:center">
-                <div class="muted">Enemy</div>
+                <div class="muted" id="enemy-name">Enemy</div>
                 <img id="enemy-img" src="IMAGES/enemy.png" alt="enemy">
-                <div id="enemy-hp" class="muted">HP: --</div>
+                <div class="muted" id="enemy-hp">HP --</div>
               </div>
-              <div style="text-align:center;margin-left:40px">
+
+              <div style="text-align:center">
                 <div class="muted">You</div>
                 <img id="player-img" src="IMAGES/Tristan.png" alt="player">
-                <div id="player-battle-hp" class="muted">HP: --</div>
+                <div class="muted" id="player-battle-hp">HP --</div>
               </div>
             </div>
 
-            <div class="choices">
+            <div class="battle-text" id="battle-text">An enemy appeared!</div>
+
+            <div class="battle-ui" style="margin-top:8px">
               <div class="choice" id="choice-fight">FIGHT</div>
               <div class="choice" id="choice-act">ACT</div>
               <div class="choice" id="choice-item">ITEM</div>
@@ -185,22 +175,23 @@
 
       </div>
 
-      <!-- TUTORIAL -->
-      <div id="tutorial" class="screen-child">
-        <h2>Tutorial</h2>
+      <!-- Tutorial -->
+      <div id="tutorial" style="display:none;padding:16px">
+        <h2>Tutorial — Walter's Training</h2>
         <div style="display:flex;gap:16px;align-items:flex-start">
-          <img src="IMAGES/WalterTut.png" alt="Walter">
+          <img src="IMAGES/WalterTut.png" width="140" alt="Walter">
           <div>
-            <p>Welcome — Walter will teach you how to fight.</p>
-            <ol>
-              <li>Explore to find enemies. When a battle starts the battle UI appears.</li>
-              <li><strong>Fight</strong> will do a basic attack. Damage scales with level.</li>
-              <li><strong>Act</strong> lets you try non-violent options — can reduce enemy aggression.</li>
-              <li><strong>Item</strong> uses items like potions. (Starter: none)</li>
-              <li><strong>Flee</strong> attempts to escape back to the dungeon — chance depends on levels.</li>
-            </ol>
-            <p class="muted">The tutorial demonstrates the battle loop and the story: you are a king thrown into dungeons. Gain XP to level up and reclaim your throne — or choose a different path.</p>
-            <div style="margin-top:8px"><button id="btn-back-to-title">Back to Title</button></div>
+            <p>Walter will spar step-by-step. Each action will be explained by him.</p>
+            <ul>
+              <li>FIGHT — basic attack</li>
+              <li>ACT — try non-violent options</li>
+              <li>ITEM — use potions</li>
+              <li>FLEE — attempt to escape</li>
+            </ul>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button class="btn" id="btn-start-tut">Start Training Battle</button>
+              <button class="btn" id="btn-back-to-title">Back to Title</button>
+            </div>
           </div>
         </div>
       </div>
@@ -208,330 +199,593 @@
     </div>
   </div>
 
+  <!-- Audio -->
   <audio id="dungeon-audio" loop src="MUSIC/DungeonTheme.ogg"></audio>
 
-  <script>
-    // ---- Data model ----
-    const DEFAULT_SAVE = {
-      name: 'Tristan', lvl:1, xp:0, hp:10, maxhp:10, gold:0,
-      dungeonType: null
+<script>
+/* ---------------------------
+   Full-feature game script
+   --------------------------- */
+
+/* --- Globals / default state --- */
+const SAVE_KEY = 'tristan_full_save_v1';
+
+const DEFAULT_SAVE = {
+  name: 'Tristan', lvl:1, xp:0, hp:10, maxhp:10, gold:0, potions:0, dungeonType:null,
+  mapSeed: 12345, playerPos:null
+};
+
+let state = {};
+let map = [];         // 2D tile map
+let mapW = 24, mapH = 12;
+let tileSize = 1;     // logical grid (ASCII) — visuals overlay uses absolute pixels separately
+let playerPos = {x: Math.floor(mapW/2), y: Math.floor(mapH/2)};
+let lastMoveTime = 0;
+let moveDelay = 120;  // ms between tile moves (prevents spamming)
+let inBattle = false;
+let currentEnemy = null;
+let tutorialMode = false;
+let awaitingTutorialStep = false;
+
+/* DOM refs */
+const titleScreen = document.getElementById('title-screen');
+const gameView = document.getElementById('game-view');
+const tutorial = document.getElementById('tutorial');
+const asciiMapEl = document.getElementById('ascii-map');
+const visualPlayer = document.getElementById('visual-player');
+const visualEnemy = document.getElementById('visual-enemy');
+const tintOverlay = document.getElementById('tint-overlay');
+
+const playerNameEl = document.getElementById('player-name');
+const playerLvlEl = document.getElementById('player-lvl');
+const playerHpEl = document.getElementById('player-hp');
+const playerMaxHpEl = document.getElementById('player-maxhp');
+const currencyAmt = document.getElementById('currency-amt');
+const potionsEl = document.getElementById('potions');
+const xpInfo = document.getElementById('xpinfo');
+
+const logEl = document.getElementById('log');
+
+const battleOverlay = document.getElementById('battle-overlay');
+const enemyImg = document.getElementById('enemy-img');
+const playerImg = document.getElementById('player-img');
+const battleText = document.getElementById('battle-text');
+const enemyNameEl = document.getElementById('enemy-name');
+const enemyHpEl = document.getElementById('enemy-hp');
+const playerBattleHpEl = document.getElementById('player-battle-hp');
+
+const titleAudio = document.getElementById('title-audio');
+const dungeonAudio = document.getElementById('dungeon-audio');
+const toggleMusic = document.getElementById('toggle-music');
+const toggleMusicTitle = document.getElementById('toggle-music-title');
+
+/* dungeon types */
+const DUNGEON_TYPES = [
+  {id:'stone', name:'Stone Caves', tint:'rgba(120,120,200,0.28)'},
+  {id:'moss',  name:'Mossy Halls', tint:'rgba(40,130,60,0.30)'},
+  {id:'fiery', name:'Ash Pits',   tint:'rgba(180,40,20,0.28)'},
+  {id:'frost', name:'Frost Vaults',tint:'rgba(180,220,255,0.20)'}
+];
+
+/* audio settings */
+titleAudio.volume = 0.6; dungeonAudio.volume = 0.6;
+
+/* ---------------------------
+   Utilities
+   --------------------------- */
+function log(text){
+  const d = document.createElement('div');
+  d.textContent = text;
+  logEl.prepend(d);
+}
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+/* --- map generation (simple random rooms) --- */
+function generateMap(seed){
+  // simple deterministic-ish map (seed affects random if provided)
+  map = Array.from({length:mapH}, ()=>Array.from({length:mapW}, ()=>'.'));
+  // surround with walls
+  for(let y=0;y<mapH;y++) for(let x=0;x<mapW;x++){
+    if(x===0||y===0||x===mapW-1||y===mapH-1) map[y][x] = '#';
+  }
+  // carve a few random walls and rooms
+  const rooms = randInt(3,7);
+  for(let r=0;r<rooms;r++){
+    const rx = randInt(2,mapW-5), ry = randInt(2,mapH-5), rw = randInt(3,6), rh = randInt(2,4);
+    for(let yy=ry; yy<Math.min(mapH-1,ry+rh); yy++){
+      for(let xx=rx; xx<Math.min(mapW-1,rx+rw); xx++){
+        map[yy][xx] = '#';
+      }
+    }
+  }
+  // ensure start position is a floor
+  if(map[playerPos.y][playerPos.x] === '#'){
+    for(let y=1;y<mapH-1;y++) for(let x=1;x<mapW-1;x++) if(map[y][x]==='.'){ playerPos.x = x; playerPos.y = y; x=mapW; y=mapH; }
+  }
+}
+
+/* render ascii map */
+function renderAscii(){
+  const rows = map.map((row,y)=>{
+    return row.map((t,x)=>{
+      if(x===playerPos.x && y===playerPos.y) return '@';
+      return t;
+    }).join('');
+  });
+  asciiMapEl.textContent = rows.join('\n');
+  // position visual player roughly (centered overlay)
+  const playArea = document.querySelector('.play-area');
+  const rect = playArea.getBoundingClientRect();
+  // visual sprites are centered horizontally in the play-area for battle look; for movement we'll compute a rough position
+  // compute pixel position of player on the play-area using ascii grid
+  const px = Math.round(rect.left + (playerPos.x / (mapW-1)) * rect.width);
+  const py = Math.round(rect.top + (playerPos.y / (mapH-1)) * rect.height);
+  // place visual player (translate to center)
+  const vp = visualPlayer;
+  vp.style.left = Math.round((playerPos.x / (mapW-1)) * 100) + '%';
+  vp.style.top = Math.round((playerPos.y / (mapH-1)) * 100) + '%';
+  vp.style.transform = 'translate(-50%,-50%)';
+}
+
+/* --- dungeon pick / tint --- */
+function pickDungeon(){
+  const pick = DUNGEON_TYPES[randInt(0,DUNGEON_TYPES.length-1)];
+  state.dungeonType = pick.id;
+  tintOverlay.style.background = pick.tint;
+  log('Dungeon: ' + pick.name);
+}
+
+/* --- save/load --- */
+function saveGame(){
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  log('Game saved.');
+}
+function loadGame(){
+  const raw = localStorage.getItem(SAVE_KEY);
+  if(!raw) return null;
+  try{ return JSON.parse(raw);}catch(e){return null}
+}
+
+/* --- init / start --- */
+function startNewGame(){
+  state = JSON.parse(JSON.stringify(DEFAULT_SAVE));
+  // randomize dungeon & map
+  pickDungeon();
+  generateMap(Date.now() % 100000);
+  // center player
+  playerPos = {x: Math.floor(mapW/2), y: Math.floor(mapH/2)};
+  state.hp = state.maxhp;
+  state.xp = state.xp || 0;
+  state.potions = state.potions || 0;
+  syncUI();
+  renderAscii();
+  titleScreen.style.display = 'none';
+  tutorial.style.display = 'none';
+  gameView.style.display = 'block';
+  updateAudio();
+  log('You awaken in the dungeon...');
+}
+function resumeFromSave(saved){
+  state = Object.assign({}, DEFAULT_SAVE, saved);
+  // restore dungeon and map (re-generate for now)
+  if(!state.dungeonType) pickDungeon();
+  else {
+    const pick = DUNGEON_TYPES.find(d=>d.id===state.dungeonType) || DUNGEON_TYPES[0];
+    tintOverlay.style.background = pick.tint;
+  }
+  // load player pos if exists
+  playerPos = saved.playerPos || {x: Math.floor(mapW/2), y: Math.floor(mapH/2)};
+  generateMap(saved.mapSeed || Date.now()%100000);
+  syncUI();
+  renderAscii();
+  titleScreen.style.display = 'none';
+  tutorial.style.display = 'none';
+  gameView.style.display = 'block';
+  updateAudio();
+  log('Loaded your previous game.');
+}
+function syncUI(){
+  playerNameEl.textContent = state.name;
+  playerLvlEl.textContent = state.lvl;
+  playerHpEl.textContent = state.hp;
+  playerMaxHpEl.textContent = state.maxhp;
+  currencyAmt.textContent = state.gold;
+  potionsEl.textContent = state.potions || 0;
+  xpInfo.textContent = (state.xp||0) + ' XP (next lvl: ' + (5 + state.lvl*4) + ')';
+  playerBattleHpEl.textContent = 'HP: ' + state.hp + ' / ' + state.maxhp;
+}
+
+/* ---------------------------
+   Encounters / battle system
+   --------------------------- */
+
+/* enemy templates with unique act text */
+const ENEMY_TEMPLATES = [
+  {id:'grunt', name:'Grunt', baseHp:6, baseAtk:2, gold:2, actText:'The grunt snarls!'},
+  {id:'spike', name:'Spiker', baseHp:8, baseAtk:3, gold:3, actText:'It bristles and hisses.'},
+  {id:'shade', name:'Shade', baseHp:5, baseAtk:2, gold:4, actText:'A cold whisper echoes.'}
+];
+
+function generateEnemyForLevel(plvl){
+  const tpl = ENEMY_TEMPLATES[randInt(0,ENEMY_TEMPLATES.length-1)];
+  const hp = tpl.baseHp + plvl*2 + randInt(-1,2);
+  const atk = tpl.baseAtk + Math.floor(plvl/3) + randInt(0,1);
+  return {tplId:tpl.id, name:tpl.name, hp, maxhp:hp, atk, gold: tpl.gold + Math.floor(plvl/2), actText: tpl.actText};
+}
+
+/* start battle */
+function startBattle(enemy, tutorial=false){
+  if(inBattle) return;
+  inBattle = true;
+  currentEnemy = enemy;
+  tutorialMode = !!tutorial;
+  // show overlay and populate UI
+  battleOverlay.style.display = 'flex';
+  enemyImg.src = getEnemyImageForDungeon();
+  enemyNameEl.textContent = enemy.name;
+  enemyHpEl.textContent = 'HP: ' + enemy.hp + ' / ' + enemy.maxhp;
+  playerBattleHpEl.textContent = 'HP: ' + state.hp + ' / ' + state.maxhp;
+  battleText.textContent = (tutorial? 'Walter: Focus — I will explain each action.' : (enemy.name + ' appeared!'));
+  // position visual enemy for flavor
+  visualEnemy.style.left = '50%';
+  visualEnemy.style.top = '12%';
+  visualEnemy.style.transform = 'translateX(-50%)';
+  visualEnemy.style.filter = enemyTintFilterForDungeon();
+  // audio: switch to dungeon music
+  updateAudio();
+  // if tutorial show step sequence
+  if(tutorialMode){
+    awaitingTutorialStep = true;
+    runTutorialSequence();
+  }
+}
+
+/* apply tint */
+function enemyTintFilterForDungeon(){
+  const map = {
+    'stone': 'none',
+    'moss': 'hue-rotate(80deg) saturate(1.2)',
+    'fiery': 'hue-rotate(-20deg) saturate(1.3) brightness(0.95)',
+    'frost': 'hue-rotate(170deg) saturate(0.9) brightness(1.05)'
+  };
+  return map[state.dungeonType] || 'none';
+}
+function getEnemyImageForDungeon(){ return 'IMAGES/enemy.png'; }
+
+/* end battle */
+function endBattle(win){
+  inBattle = false;
+  currentEnemy = null;
+  tutorialMode = false;
+  awaitingTutorialStep = false;
+  battleOverlay.style.display = 'none';
+  visualEnemy.style.left = '-300px';
+  // if win we already handled rewards in victory()
+  syncUI();
+}
+
+/* player actions */
+function playerFight(){
+  if(!inBattle || !currentEnemy) return;
+  const playerAtk = 2 + Math.floor(state.lvl/2) + randInt(0,2);
+  currentEnemy.hp -= playerAtk;
+  pushBattleMessage(`You strike ${currentEnemy.name} for ${playerAtk} damage.`);
+  // shake enemy sprite
+  enemyImg.classList.add('shake'); visualEnemy.classList.add('shake');
+  setTimeout(()=>{ enemyImg.classList.remove('shake'); visualEnemy.classList.remove('shake'); },420);
+  updateEnemyHpUI();
+
+  if(currentEnemy.hp <= 0){
+    victory();
+  } else {
+    setTimeout(enemyTurn,600);
+  }
+}
+
+function playerAct(){
+  if(!inBattle || !currentEnemy) return;
+  // show unique enemy act text
+  pushBattleMessage(currentEnemy.actText || 'You try to act...');
+  // small chance to pacify
+  if(Math.random() < 0.35){
+    pushBattleMessage('It seems calmer.');
+    currentEnemy.atk = Math.max(1, currentEnemy.atk - 1);
+  } else {
+    pushBattleMessage('It doesn\'t respond well.');
+    currentEnemy.atk += 1;
+  }
+  setTimeout(enemyTurn,600);
+}
+
+function playerUseItem(){
+  if(!inBattle) return;
+  if(state.potions && state.potions>0){
+    state.potions -= 1;
+    const heal = Math.min(state.maxhp - state.hp, 6);
+    state.hp += heal;
+    pushBattleMessage(`You used a potion and recovered ${heal} HP.`);
+    syncUI();
+  } else {
+    pushBattleMessage("You have no items.");
+  }
+  setTimeout(enemyTurn,600);
+}
+
+function playerFlee(){
+  if(!inBattle) return;
+  const chance = 0.45 + (state.lvl - (currentEnemy.atk||1))*0.03;
+  if(Math.random() < chance){
+    pushBattleMessage('You ran away!');
+    setTimeout(()=>endBattle(false),700);
+  } else {
+    pushBattleMessage('You failed to escape!');
+    setTimeout(enemyTurn,500);
+  }
+}
+
+/* enemy turn */
+function enemyTurn(){
+  if(!inBattle || !currentEnemy) return;
+  const dmg = Math.max(1, currentEnemy.atk + randInt(-1,1));
+  state.hp -= dmg;
+  pushBattleMessage(`${currentEnemy.name} hits you for ${dmg} damage.`);
+  // shake player visuals
+  playerImg.classList.add('shake'); visualPlayer.classList.add('shake');
+  setTimeout(()=>{ playerImg.classList.remove('shake'); visualPlayer.classList.remove('shake'); },420);
+  if(state.hp <= 0){
+    state.hp = 0; syncUI(); defeat();
+  } else {
+    syncUI();
+    playerBattleHpEl.textContent = 'HP: ' + state.hp + ' / ' + state.maxhp;
+  }
+}
+
+/* on win/lose */
+function victory(){
+  pushBattleMessage(`You defeated the ${currentEnemy.name}!`);
+  state.gold += (currentEnemy.gold || 1);
+  const xpGain = 3 + Math.floor((currentEnemy.maxhp || 6) / 4);
+  state.xp = (state.xp || 0) + xpGain;
+  pushBattleMessage(`You gained ${xpGain} XP and ${(currentEnemy.gold||1)} gold.`);
+  checkLevelUp();
+  setTimeout(()=>endBattle(true),800);
+}
+function defeat(){
+  pushBattleMessage('You collapsed... You wake back at the dungeon entrance.');
+  // simple penalty: lose some gold & respawn
+  state.gold = Math.max(0, Math.floor(state.gold * 0.5));
+  state.hp = state.maxhp;
+  // clear save (like old behavior)
+  localStorage.removeItem(SAVE_KEY);
+  setTimeout(()=>{ endBattle(false); renderAscii(); syncUI(); },1200);
+}
+
+/* level up */
+function checkLevelUp(){
+  const xpToLevel = 5 + (state.lvl * 4);
+  if((state.xp||0) >= xpToLevel){
+    state.xp -= xpToLevel; state.lvl += 1; state.maxhp += 4; state.hp = state.maxhp;
+    pushBattleMessage(`You leveled up! Now level ${state.lvl}.`);
+  }
+  syncUI();
+}
+
+/* push message to battle text */
+function pushBattleMessage(msg){
+  battleText.textContent = msg;
+  log('[BATTLE] ' + msg);
+}
+
+/* ---------------------------
+   Input & movement
+   --------------------------- */
+document.addEventListener('keydown', (ev) => {
+  // global UI keys
+  if(ev.key === 'Escape' && inBattle){
+    // attempt to flee quickly
+    playerFlee();
+    return;
+  }
+
+  const now = performance.now();
+  if(now - lastMoveTime < moveDelay) return; // simple throttle to grid
+  // block movement when battle active or tutorial awaiting input
+  if(inBattle) return;
+  if(document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+
+  let moved = false;
+  if(ev.key === 'w' || ev.key === 'ArrowUp'){ if(canWalk(playerPos.x, playerPos.y-1)){ playerPos.y--; moved = true; } }
+  if(ev.key === 's' || ev.key === 'ArrowDown'){ if(canWalk(playerPos.x, playerPos.y+1)){ playerPos.y++; moved = true; } }
+  if(ev.key === 'a' || ev.key === 'ArrowLeft'){ if(canWalk(playerPos.x-1, playerPos.y)){ playerPos.x--; moved = true; } }
+  if(ev.key === 'd' || ev.key === 'ArrowRight'){ if(canWalk(playerPos.x+1, playerPos.y)){ playerPos.x++; moved = true; } }
+
+  if(moved){
+    lastMoveTime = now;
+    renderAscii();
+    // random encounter chance when stepping on floor (not on walls)
+    const tile = map[playerPos.y][playerPos.x];
+    if(tile === '.'){
+      const encounterChance = 0.12; // ~12% per step (tweakable)
+      if(Math.random() < encounterChance) {
+        const e = generateEnemyForLevel(state.lvl || 1);
+        startBattle(e, false);
+      } else {
+        log('You move cautiously...');
+      }
+    } else {
+      log('You bump into something solid.');
+    }
+  }
+});
+
+/* check walkable */
+function canWalk(x,y){
+  if(x < 0 || y < 0 || x >= mapW || y >= mapH) return false;
+  return map[y][x] !== '#';
+}
+
+/* --- UI bindings --- */
+document.getElementById('btn-new').onclick = () => startNewGame();
+document.getElementById('btn-load').onclick = () => {
+  const s = loadGame();
+  if(s) resumeFromSave(s);
+  else alert('No save found. Start a NEW GAME.');
+};
+document.getElementById('btn-save').onclick = () => {
+  // store current map seed & player pos
+  state.playerPos = playerPos;
+  state.mapSeed = Date.now() % 100000;
+  saveGame();
+};
+document.getElementById('btn-load-quick').onclick = () => {
+  const s = loadGame();
+  if(s) resumeFromSave(s);
+  else log('No quick save found.');
+};
+document.getElementById('btn-rest').onclick = () => {
+  const healed = Math.min(state.maxhp, state.hp + Math.ceil(state.maxhp*0.5));
+  const gotPot = (Math.random() < 0.15);
+  state.hp = healed; if(gotPot) state.potions = (state.potions||0) + 1;
+  log(`You rest and recover HP${gotPot? ' and find a potion!':''}`);
+  syncUI();
+};
+document.getElementById('btn-return').onclick = () => {
+  if(confirm('Return to title? Unsaved progress will remain.')) {
+    gameView.style.display = 'none';
+    titleScreen.style.display = 'flex';
+    updateAudio();
+  }
+};
+
+document.getElementById('btn-tut').onclick = () => {
+  titleScreen.style.display = 'none';
+  tutorial.style.display = 'block';
+  titleAudio.pause();
+};
+document.getElementById('btn-back-to-title').onclick = () => {
+  tutorial.style.display = 'none';
+  titleScreen.style.display = 'flex';
+  updateAudio();
+};
+document.getElementById('btn-start-tut').onclick = () => {
+  tutorial.style.display = 'none';
+  startNewGame();            // fresh world
+  // start Walter battle and run step-by-step
+  startBattle({name:'Walter', hp:14, maxhp:14, atk:2, gold:0, actText:'Walter says: That\'s how ACT works!'}, true);
+};
+
+/* Battle UI choices */
+document.getElementById('choice-fight').onclick = playerFight;
+document.getElementById('choice-act').onclick = playerAct;
+document.getElementById('choice-item').onclick = playerUseItem;
+document.getElementById('choice-flee').onclick = playerFlee;
+
+/* music toggles */
+toggleMusic.addEventListener('change', updateAudio);
+toggleMusicTitle.addEventListener('change', updateAudio);
+function updateAudio(){
+  const on = toggleMusic.checked || toggleMusicTitle.checked;
+  if(!on){ titleAudio.pause(); dungeonAudio.pause(); return; }
+  // if game view shown -> dungeon music else title music
+  if(gameView.style.display !== 'none' && inBattle === false){
+    dungeonAudio.play().catch(()=>{}); titleAudio.pause();
+  } else {
+    titleAudio.play().catch(()=>{}); dungeonAudio.pause();
+  }
+}
+
+/* autosave */
+setInterval(()=>{
+  if(gameView.style.display !== 'none') {
+    state.playerPos = playerPos;
+    saveGame();
+  }
+}, 30000);
+
+/* render initial state */
+window.addEventListener('load', ()=>{
+  // try to detect save file
+  const s = loadGame();
+  if(s) {
+    log('Save file detected. Use LOAD GAME to continue.');
+  }
+  renderAscii();
+  updateAudio();
+});
+
+/* helper: update enemy hp UI */
+function updateEnemyHpUI(){
+  if(currentEnemy) enemyHpEl.textContent = 'HP: ' + Math.max(0,currentEnemy.hp) + ' / ' + currentEnemy.maxhp;
+}
+
+/* ---------------------------
+   Walter tutorial sequence
+   --------------------------- */
+async function runTutorialSequence(){
+  if(!tutorialMode) return;
+  // step 1: explain FIGHT
+  pushBattleMessage('Walter: Try FIGHT to deal damage.');
+  awaitingTutorialStep = true;
+  // wait for player to fight once
+  await waitForAction('fight', 12000);
+  pushBattleMessage('Walter: Good. You dealt damage.');
+  // step 2: explain ACT
+  pushBattleMessage('Walter: Now try ACT to see a reaction.');
+  await waitForAction('act', 12000);
+  pushBattleMessage('Walter: ACT can change behavior.');
+  // step 3: ITEMS
+  pushBattleMessage('Walter: Use an ITEM (you may not have potions here; it will be demonstrated).');
+  await waitForAction('item', 8000);
+  pushBattleMessage('Walter: Items help in longer fights.');
+  // step 4: FLEE
+  pushBattleMessage('Walter: Try FLEE to retreat.');
+  await waitForAction('flee', 8000);
+  pushBattleMessage('Walter: Tutorial complete. Fight some real battles now!');
+  // end tutorial: reward a potion
+  state.potions = (state.potions||0) + 1;
+  pushBattleMessage('Walter gave you a potion as a reward!');
+  syncUI();
+  // finish
+  setTimeout(()=>{ endBattle(true); }, 1200);
+}
+
+/* wait for specific choice (promise-based, resolves on action or timeout) */
+function waitForAction(choiceId, timeoutMs=8000){
+  return new Promise((resolve)=>{
+    let done = false;
+    const handler = {
+      fight: ()=>{ if(!done){ done=true; document.getElementById('choice-fight').removeEventListener('click', handler.fight); resolve(true);} },
+      act:   ()=>{ if(!done){ done=true; document.getElementById('choice-act').removeEventListener('click', handler.act); resolve(true);} },
+      item:  ()=>{ if(!done){ done=true; document.getElementById('choice-item').removeEventListener('click', handler.item); resolve(true);} },
+      flee:  ()=>{ if(!done){ done=true; document.getElementById('choice-flee').removeEventListener('click', handler.flee); resolve(true);} }
     };
+    // attach
+    document.getElementById('choice-fight').addEventListener('click', handler.fight);
+    document.getElementById('choice-act').addEventListener('click', handler.act);
+    document.getElementById('choice-item').addEventListener('click', handler.item);
+    document.getElementById('choice-flee').addEventListener('click', handler.flee);
+    // timeout
+    setTimeout(()=>{ if(!done){ done=true; // cleanup
+      document.getElementById('choice-fight').removeEventListener('click', handler.fight);
+      document.getElementById('choice-act').removeEventListener('click', handler.act);
+      document.getElementById('choice-item').removeEventListener('click', handler.item);
+      document.getElementById('choice-flee').removeEventListener('click', handler.flee);
+      resolve(false);
+    } }, timeoutMs);
+  });
+}
 
-    // DOM
-    const titleScreen = document.getElementById('title-screen');
-    const gameView = document.getElementById('game-view');
-    const tutorial = document.getElementById('tutorial');
-    const btnNew = document.getElementById('btn-new');
-    const btnLoad = document.getElementById('btn-load');
-    const btnTut = document.getElementById('btn-tut');
-    const btnBackToTitle = document.getElementById('btn-back-to-title');
-    const titleAudio = document.getElementById('title-audio');
-    const dungeonAudio = document.getElementById('dungeon-audio');
+/* ---------------------------
+   Minor fixes & notes
+   --------------------------- */
+/* The ASCII map is the authoritative position for movement. Visual sprites are overlayed
+   for aesthetics. The encounter system triggers on stepping onto '.' tiles. You can tweak:
+     - encounter chance in keydown handler
+     - moveDelay for speed control
+     - ENEMY_TEMPLATES for variety
+*/
 
-    const tintOverlay = document.getElementById('tint-overlay');
-    const dungeonName = document.getElementById('dungeon-name');
-    const logEl = document.getElementById('log');
-
-    const playerNameEl = document.getElementById('player-name');
-    const playerLvlEl = document.getElementById('player-lvl');
-    const playerHpEl = document.getElementById('player-hp');
-    const playerMaxHpEl = document.getElementById('player-maxhp');
-    const currencyAmt = document.getElementById('currency-amt');
-
-    const btnExplore = document.getElementById('btn-explore');
-    const btnRest = document.getElementById('btn-rest');
-    const btnSave = document.getElementById('btn-save');
-    const btnReturn = document.getElementById('btn-return');
-    const toggleMusic = document.getElementById('toggle-music');
-
-    // Battle
-    const battleOverlay = document.getElementById('battle-overlay');
-    const enemyImg = document.getElementById('enemy-img');
-    const playerBattleHpEl = document.getElementById('player-battle-hp');
-    const enemyHpEl = document.getElementById('enemy-hp');
-    const choiceFight = document.getElementById('choice-fight');
-    const choiceAct = document.getElementById('choice-act');
-    const choiceItem = document.getElementById('choice-item');
-    const choiceFlee = document.getElementById('choice-flee');
-
-    let state = {};
-    let inBattle = false;
-    let currentEnemy = null;
-
-    // ---- Utilities ----
-    function log(text){
-      const line = document.createElement('div');
-      line.textContent = text;
-      logEl.prepend(line);
-    }
-
-    function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
-
-    // ---- Dungeon generator (type + tint) ----
-    const DUNGEON_TYPES = [
-      {id:'stone',name:'Stone Caves', tint:'rgba(120,120,200,0.35)'},
-      {id:'moss',name:'Mossy Halls', tint:'rgba(40,130,60,0.32)'},
-      {id:'fiery',name:'Ash Pits', tint:'rgba(180,40,20,0.28)'},
-      {id:'frost',name:'Frost Vaults', tint:'rgba(180,220,255,0.28)'}
-    ];
-
-    function pickDungeon(){
-      const pick = DUNGEON_TYPES[randInt(0,DUNGEON_TYPES.length-1)];
-      state.dungeonType = pick.id;
-      document.getElementById('dungeon-name').textContent = pick.name;
-      // apply tint using overlay
-      tintOverlay.style.background = pick.tint;
-    }
-
-    // ---- Audio control ----
-    function updateAudio(){
-      if(toggleMusic.checked){
-        if(gameView.style.display !== 'none'){dungeonAudio.play().catch(()=>{}); titleAudio.pause();}
-        else{titleAudio.play().catch(()=>{}); dungeonAudio.pause();}
-      } else {titleAudio.pause(); dungeonAudio.pause();}
-    }
-
-    // ---- Save / Load ----
-    const SAVE_KEY = 'tristan_save_v1';
-    function saveGame(){
-      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-      log('Game saved.');
-    }
-    function loadGame(){
-      const raw = localStorage.getItem(SAVE_KEY);
-      if(!raw) return null;
-      try{ return JSON.parse(raw);}catch(e){return null}
-    }
-
-    // ---- Game loop / actions ----
-    function startNewGame(){
-      state = JSON.parse(JSON.stringify(DEFAULT_SAVE));
-      pickDungeon();
-      syncUI();
-      titleScreen.style.display='none';
-      tutorial.style.display='none';
-      gameView.style.display='block';
-      updateAudio();
-      log('You awaken in the dungeon...');
-    }
-
-    function resumeFromSave(saved){
-      state = Object.assign({}, DEFAULT_SAVE, saved);
-      // if dungeonType not set, pick one
-      if(!state.dungeonType) pickDungeon();
-      else {
-        const pick = DUNGEON_TYPES.find(d=>d.id===state.dungeonType) || DUNGEON_TYPES[0];
-        tintOverlay.style.background = pick.tint; dungeonName.textContent = pick.name;
-      }
-      syncUI();
-      titleScreen.style.display='none';
-      tutorial.style.display='none';
-      gameView.style.display='block';
-      updateAudio();
-      log('Loaded your previous game.');
-    }
-
-    function syncUI(){
-      playerNameEl.textContent = state.name;
-      playerLvlEl.textContent = state.lvl;
-      playerHpEl.textContent = state.hp;
-      playerMaxHpEl.textContent = state.maxhp;
-      currencyAmt.textContent = state.gold;
-    }
-
-    // ---- Encounters & Battle system ----
-    function tryEncounter(){
-      // 30% chance on explore
-      if(inBattle) return;
-      if(Math.random() < 0.30){
-        startBattle(generateEnemyForLevel(state.lvl));
-      } else {
-        log('You explore the corridors... nothing yet.');
-      }
-    }
-
-    function generateEnemyForLevel(plvl){
-      // enemy difficulty scales with player level. We'll tint enemy sprite in canvas by CSS filter for variety.
-      const baseHp = 6 + plvl*3 + randInt(-1,2);
-      const power = 2 + Math.floor(plvl/2) + randInt(0,2);
-      const gold = 1 + Math.floor(plvl/2) + randInt(0,3);
-      const id = 'grunt';
-      return {id, name:'Grunt', hp:baseHp, maxhp:baseHp, atk:power, gold};
-    }
-
-    function startBattle(enemy){
-      inBattle = true; currentEnemy = enemy;
-      battleOverlay.style.display='flex';
-      enemyImg.src = 'IMAGES/enemy.png';
-      // change enemy appearance slightly depending on dungeon
-      applyEnemyTintByDungeon(state.dungeonType);
-      enemyHpEl.textContent = 'HP: ' + enemy.hp + '/' + enemy.maxhp;
-      playerBattleHpEl.textContent = 'HP: ' + state.hp + '/' + state.maxhp;
-      log('A ' + enemy.name + ' appeared!');
-    }
-
-    function applyEnemyTintByDungeon(dungeonId){
-      // use CSS filters to shift hue/saturate so the same sprite looks different
-      const map = {
-        'stone': 'none',
-        'moss': 'hue-rotate(80deg) saturate(1.2)',
-        'fiery': 'hue-rotate(-20deg) saturate(1.3) brightness(0.95)',
-        'frost': 'hue-rotate(170deg) saturate(0.8) brightness(1.05)'
-      };
-      enemyImg.style.filter = map[dungeonId] || 'none';
-    }
-
-    // Player chooses fight
-    function playerFight(){
-      if(!inBattle) return;
-      const playerAtk = 2 + Math.floor(state.lvl/2) + randInt(0,2);
-      currentEnemy.hp -= playerAtk;
-      log('You strike the ' + currentEnemy.name + ' for ' + playerAtk + ' damage.');
-      if(currentEnemy.hp <= 0){
-        victory();
-      } else {
-        enemyHpEl.textContent = 'HP: ' + currentEnemy.hp + '/' + currentEnemy.maxhp;
-        setTimeout(enemyTurn,600);
-      }
-    }
-
-    function playerAct(){
-      if(!inBattle) return;
-      // simple Act: try to pacify for a chance
-      const success = Math.random() < 0.35;
-      if(success){
-        log('You attempt to reason with the enemy. It seems calmer.');
-        // reduce enemy next attack
-        currentEnemy.atk = Math.max(1, currentEnemy.atk-1);
-      } else {
-        log('Your attempt fails and angers the enemy.');
-        currentEnemy.atk += 1;
-      }
-      setTimeout(enemyTurn,500);
-    }
-
-    function playerUseItem(){
-      if(!inBattle) return;
-      // starter: no items. We'll implement a simple potion when player rests
-      if(state.potions && state.potions>0){
-        state.potions -= 1; state.hp = Math.min(state.maxhp, state.hp + 6);
-        log('You used a potion and recovered HP.');
-        syncUI();
-      } else {
-        log('You have no items to use.');
-      }
-      setTimeout(enemyTurn,500);
-    }
-
-    function playerFlee(){
-      if(!inBattle) return;
-      const chance = 0.5 - (currentEnemy.atk - state.lvl)*0.05; // roughly scale
-      if(Math.random() < chance){
-        log('You managed to flee!');
-        endBattle(false);
-      } else {
-        log('You failed to escape!');
-        setTimeout(enemyTurn,400);
-      }
-    }
-
-    function enemyTurn(){
-      if(!inBattle) return;
-      const dmg = Math.max(1, currentEnemy.atk + randInt(-1,1));
-      state.hp -= dmg;
-      log('The ' + currentEnemy.name + ' hits you for ' + dmg + ' damage.');
-      if(state.hp <= 0){
-        state.hp = 0; syncUI();
-        defeat();
-      } else {
-        playerBattleHpEl.textContent = 'HP: ' + state.hp + '/' + state.maxhp;
-        playerHpEl.textContent = state.hp;
-        syncUI();
-      }
-    }
-
-    function victory(){
-      log('You defeated the ' + currentEnemy.name + '!');
-      state.gold += currentEnemy.gold;
-      const xpGain = 3 + Math.floor(currentEnemy.maxhp/4);
-      state.xp = (state.xp || 0) + xpGain;
-      log('You gained ' + xpGain + ' XP and ' + currentEnemy.gold + ' gold.');
-      checkLevelUp();
-      endBattle(true);
-    }
-
-    function checkLevelUp(){
-      const xpToLevel = 5 + (state.lvl * 4);
-      if((state.xp||0) >= xpToLevel){
-        state.xp -= xpToLevel; state.lvl += 1; state.maxhp += 4; state.hp = state.maxhp;
-        log('You leveled up! Now level ' + state.lvl + '.');
-      }
-      syncUI();
-    }
-
-    function defeat(){
-      log('You collapsed... The world fades.');
-      // simple respawn: back to title and clear save
-      inBattle = false; currentEnemy = null; battleOverlay.style.display='none';
-      titleScreen.style.display='block'; gameView.style.display='none';
-      titleAudio.play().catch(()=>{}); dungeonAudio.pause();
-      localStorage.removeItem(SAVE_KEY);
-      log('Your save was lost.');
-    }
-
-    function endBattle(win){
-      inBattle = false; currentEnemy = null; battleOverlay.style.display='none';
-      syncUI();
-    }
-
-    // ---- UI bindings ----
-    btnNew.addEventListener('click', ()=>{ startNewGame(); });
-    btnTut.addEventListener('click', ()=>{ titleScreen.style.display='none'; tutorial.style.display='block'; titleAudio.pause(); });
-    btnBackToTitle.addEventListener('click', ()=>{ tutorial.style.display='none'; titleScreen.style.display='block'; titleAudio.play().catch(()=>{}); });
-
-    btnLoad.addEventListener('click', ()=>{
-      const s = loadGame();
-      if(s) resumeFromSave(s);
-      else alert('No save found. Start a NEW GAME.');
-    });
-
-    btnExplore.addEventListener('click', ()=>{ tryEncounter(); });
-    btnRest.addEventListener('click', ()=>{
-      // rest restores hp and gives tiny chance of item (potion)
-      const healed = Math.min(state.maxhp, state.hp + Math.ceil(state.maxhp*0.5));
-      state.hp = healed; state.potions = (state.potions||0) + (Math.random()<0.15?1:0);
-      log('You rest and recover HP.'); syncUI();
-    });
-
-    btnSave.addEventListener('click', ()=>{ saveGame(); });
-    btnReturn.addEventListener('click', ()=>{ if(confirm('Return to title? Unsaved progress will remain.')){gameView.style.display='none'; titleScreen.style.display='block'; updateAudio();}});
-
-    toggleMusic.addEventListener('change', ()=>updateAudio());
-
-    // Choices
-    choiceFight.addEventListener('click', ()=>playerFight());
-    choiceAct.addEventListener('click', ()=>playerAct());
-    choiceItem.addEventListener('click', ()=>playerUseItem());
-    choiceFlee.addEventListener('click', ()=>playerFlee());
-
-    // start title audio
-    titleAudio.volume = 0.6; dungeonAudio.volume = 0.6;
-    titleAudio.play().catch(()=>{});
-
-    // On page load try to resume silently
-    window.addEventListener('load', ()=>{
-      const s = loadGame();
-      if(s){
-        // leave user at title but indicate save exists
-        log('Save file detected. Use LOAD GAME to continue.');
-      }
-    });
-
-    // save periodically (autosave)
-    setInterval(()=>{
-      if(gameView.style.display!=='none') saveGame();
-    }, 30_000);
-
-  </script>
+/* End of script */
+</script>
 </body>
 </html>
