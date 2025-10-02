@@ -1,82 +1,537 @@
-<!DOCTYPE html>
+<!doctype html>
+<!--
+  Tristan Simulator - starter
+  Single-file HTML/CSS/JS starter. Place this file at your repo root and keep
+  the following folders as you described:
+    /IMAGES/Grass.jpg
+    /IMAGES/Stone.jpg
+    /IMAGES/Tristan.png
+    /IMAGES/WalterTut.png
+    /IMAGES/enemy.png
+    /IMAGES/Certified.png
+    /MUSIC/TitleTheme.ogg
+    /MUSIC/DungeonTheme.ogg
+
+  Features implemented:
+  - Start menu with NEW GAME, LOAD GAME, TUTORIAL
+  - Procedural dungeon type (different tints/overlays on Stone.jpg)
+  - Simple explore mechanic that can trigger random encounters
+  - Battle UI like a Pokémon/Undertale hybrid (Fight / Act / Item / Flee)
+  - Tutorial screen with Walter Tut image and controls
+  - Save / Load via localStorage
+  - Audio for title and dungeon
+
+  This is a starter. Expand enemies, items, sounds, and tile-based movement later.
+-->
+
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tristan Certified Dungeon</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tristan Simulator</title>
+  <style>
+    :root{
+      --ui-bg: #071028;
+      --panel: rgba(0,0,0,0.55);
+      --accent: #caa53a;
+      --font: system-ui, "Segoe UI", Roboto, Arial;
+    }
+    html,body{height:100%;margin:0;font-family:var(--font);background:#000;color:#eef}
+    #app{height:100%;display:grid;place-items:center}
+
+    /* Main game area */
+    .screen{width:960px;max-width:96vw;height:600px;position:relative;border-radius:12px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.7)}
+
+    /* Title screen */
+    #title-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;background:black}
+    #title-screen .logo{font-size:48px;font-weight:800;margin-bottom:8px}
+    #title-screen .subtitle{opacity:0.8;margin-bottom:16px}
+    .menu{display:flex;flex-direction:column;gap:10px}
+    .btn{background:var(--panel);padding:12px 24px;border-radius:8px;border:2px solid rgba(255,255,255,0.03);cursor:pointer;min-width:200px;text-align:center}
+    .btn:hover{transform:translateY(-3px)}
+
+    /* Game view */
+    #game-view{display:none;height:100%;background:#111}
+    .game-top{height:360px;display:flex}
+    .play-area{flex:1;background-image:url('IMAGES/Stone.jpg');background-size:cover;background-position:center;position:relative}
+    /* tint overlay used to change dungeon type */
+    .tint-overlay{position:absolute;inset:0;mix-blend-mode:multiply;pointer-events:none}
+    .sky-area{width:300px;background-image:url('IMAGES/Grass.jpg');background-size:cover;background-position:center}
+
+    .hud{height:240px;background:linear-gradient(to top, rgba(0,0,0,0.65), transparent);position:absolute;left:10px;bottom:10px;padding:12px;border-radius:8px;color:#fff}
+
+    /* Bottom panel */
+    .panel{height:240px;background:linear-gradient(180deg,rgba(0,0,0,0.65),#000);display:flex;gap:12px;padding:12px}
+    .left-col{width:360px;background:var(--panel);padding:12px;border-radius:8px}
+    .right-col{flex:1;background:var(--panel);padding:12px;border-radius:8px;display:flex;flex-direction:column}
+
+    .currency{display:flex;gap:10px;align-items:center}
+    .currency img{width:28px;height:28px}
+
+    /* Battle screen overlay */
+    #battle-overlay{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.6));display:none;align-items:flex-end;padding:24px}
+    .battle-box{width:100%;background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;display:flex;gap:12px;align-items:center}
+    .battle-images{display:flex;gap:20px;align-items:center}
+    .battle-images img{width:180px;height:140px;object-fit:contain}
+
+    .choices{margin-left:auto;display:flex;gap:8px}
+    .choice{background:rgba(0,0,0,0.5);padding:10px 14px;border-radius:6px;cursor:pointer}
+    .choice:hover{background:rgba(255,255,255,0.06)}
+
+    /* Tutorial */
+    #tutorial{display:none;padding:16px}
+    #tutorial img{width:160px}
+
+    /* small text */
+    .muted{opacity:0.7;font-size:13px}
+
+    /* simple responsive */
+    @media (max-width:720px){.screen{height:86vh}}
+  </style>
 </head>
 <body>
+  <div id="app">
+    <div class="screen" id="screen">
 
-    <div id="loading-screen" class="screen">
-        <h1>Loading Tristan Certified...</h1>
-        <div class="loader"></div> 
-        <p>A Certified Production. Preparing the Certified experience...</p>
-    </div>
-
-    <div id="intro-screen" class="screen hidden">
-        <h1>Welcome, certified one!</h1>
-        <ul id="intro-options">
-            <li class="menu-item selected">Start Game</li>
-            <li class="menu-item">View Tutorial</li>
-            <li class="menu-item">Exit</li>
-        </ul>
-        <p class="instruction">Use D-Pad Up/Down or **WASD** and 'A'/'X' or **ENTER** to select.</p>
-    </div>
-
-    <div id="tutorial-screen" class="screen hidden">
-        <div id="walter-sprite"></div>
-        <h2>Walter, Certified Wizard Man</h2>
-        <div id="tutorial-content">
-            <p id="tutorial-text">Greetings! I am Walter. In this Certified Dungeon, you use **WASD/D-Pad** to move and seek the **EXIT** tile. Watch out for **Cancer Blobs**! Combat is turn-based. Choose **Attack** to punch them into uncertified oblivion. May your journey be Certified!</p>
+      <!-- TITLE -->
+      <div id="title-screen" class="screen-child">
+        <div class="logo">Tristan Simulator</div>
+        <div class="subtitle">Wake. Fight. Rule again.</div>
+        <div class="menu">
+          <div class="btn" id="btn-new">NEW GAME</div>
+          <div class="btn" id="btn-load">LOAD GAME</div>
+          <div class="btn" id="btn-tut">TUTORIAL</div>
         </div>
-        <ul id="tutorial-menu">
-            <li class="tut-option selected">Begin Certified Adventure</li>
-            <li class="tut-option">Back to Start Menu</li>
-        </ul>
-    </div>
+        <audio id="title-audio" loop src="MUSIC/TitleTheme.ogg"></audio>
+      </div>
 
-    <div id="game-area" class="screen hidden">
-        <div id="game-map"></div>
-        <div id="game-sidebar">
-            <div id="player-stats">
-                <h2>Tristan</h2>
-                <div class="stat-bar">Level: <span id="player-level">1</span></div>
-                <div class="stat-bar">HP: <span id="player-hp">10</span>/<span id="player-max-hp">10</span></div>
-                <div class="stat-bar">Attack: <span id="player-attack">3</span></div>
-                <div class="stat-bar">XP: <span id="player-xp">0</span>/<span id="player-xp-next">10</span></div>
+      <!-- GAME -->
+      <div id="game-view">
+        <div style="display:flex;height:360px;">
+          <div class="play-area" id="play-area">
+            <div class="tint-overlay" id="tint-overlay"></div>
+            <div class="hud" id="top-hud">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div><strong id="player-name">Tristan</strong> <span class="muted">Lv <span id="player-lvl">1</span></span></div>
+                  <div class="muted">HP: <span id="player-hp">10</span>/<span id="player-maxhp">10</span></div>
+                </div>
+                <div class="currency"><img src="IMAGES/Certified.png" alt="coin"><div id="currency-amt">0</div></div>
+              </div>
             </div>
-            <div id="message-log">
-                <p>Welcome to the dungeon!</p>
-            </div>
+          </div>
+          <div class="sky-area" id="sky-area"></div>
         </div>
-    </div>
 
-    <div id="battle-screen" class="screen hidden">
-        <h2>BATTLE!</h2>
-        <div id="battle-entities">
-            <div id="player-battle-sprite" class="battle-sprite"></div>
-            <div id="enemy-battle-sprite" class="battle-sprite"></div>
-        </div>
-        <div id="battle-stats">
-            <div class="battle-stats-box">
-                <h3>Tristan</h3>
-                <p>HP: <span id="battle-player-hp"></span></p>
+        <div class="panel">
+          <div class="left-col">
+            <div><strong>Actions</strong></div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button id="btn-explore">Explore</button>
+              <button id="btn-rest">Rest</button>
+              <button id="btn-save">Save</button>
+              <button id="btn-return">Return to Menu</button>
             </div>
-            <div class="battle-stats-box">
-                <h3><span id="enemy-name"></span></h3>
-                <p>HP: <span id="battle-enemy-hp"></span></p>
+
+            <div style="margin-top:12px">
+              <div class="muted">Current Dungeon:</div>
+              <div id="dungeon-name">Stone Caves</div>
             </div>
+          </div>
+
+          <div class="right-col">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <strong>Log</strong>
+                <div id="log" style="margin-top:8px;max-height:150px;overflow:auto;color:#ddf"></div>
+              </div>
+              <div style="text-align:right">
+                <div class="muted">Audio</div>
+                <label><input type="checkbox" id="toggle-music" checked> Music</label>
+                <div style="margin-top:8px" class="muted">Save slot: <span id="save-slot">1</span></div>
+              </div>
+            </div>
+
+            <div style="margin-top:auto;display:flex;gap:8px;align-items:center">
+              <div class="muted">Tip: Use Explore to move. Encounters happen randomly.</div>
+            </div>
+          </div>
         </div>
-        <div id="battle-message-log"></div>
-        <ul id="battle-menu">
-            <li class="menu-item selected">Attack</li>
-            <li class="menu-item">Defend (N/A)</li>
-            <li class="menu-item">Item (N/A)</li>
-            <li class="menu-item">Run (N/A)</li>
-        </ul>
+
+        <!-- Battle overlay -->
+        <div id="battle-overlay">
+          <div class="battle-box">
+            <div class="battle-images">
+              <div style="text-align:center">
+                <div class="muted">Enemy</div>
+                <img id="enemy-img" src="IMAGES/enemy.png" alt="enemy">
+                <div id="enemy-hp" class="muted">HP: --</div>
+              </div>
+              <div style="text-align:center;margin-left:40px">
+                <div class="muted">You</div>
+                <img id="player-img" src="IMAGES/Tristan.png" alt="player">
+                <div id="player-battle-hp" class="muted">HP: --</div>
+              </div>
+            </div>
+
+            <div class="choices">
+              <div class="choice" id="choice-fight">FIGHT</div>
+              <div class="choice" id="choice-act">ACT</div>
+              <div class="choice" id="choice-item">ITEM</div>
+              <div class="choice" id="choice-flee">FLEE</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TUTORIAL -->
+      <div id="tutorial" class="screen-child">
+        <h2>Tutorial</h2>
+        <div style="display:flex;gap:16px;align-items:flex-start">
+          <img src="IMAGES/WalterTut.png" alt="Walter">
+          <div>
+            <p>Welcome — Walter will teach you how to fight.</p>
+            <ol>
+              <li>Explore to find enemies. When a battle starts the battle UI appears.</li>
+              <li><strong>Fight</strong> will do a basic attack. Damage scales with level.</li>
+              <li><strong>Act</strong> lets you try non-violent options — can reduce enemy aggression.</li>
+              <li><strong>Item</strong> uses items like potions. (Starter: none)</li>
+              <li><strong>Flee</strong> attempts to escape back to the dungeon — chance depends on levels.</li>
+            </ol>
+            <p class="muted">The tutorial demonstrates the battle loop and the story: you are a king thrown into dungeons. Gain XP to level up and reclaim your throne — or choose a different path.</p>
+            <div style="margin-top:8px"><button id="btn-back-to-title">Back to Title</button></div>
+          </div>
+        </div>
+      </div>
+
     </div>
-    
-    <script src="script.js"></script>
+  </div>
+
+  <audio id="dungeon-audio" loop src="MUSIC/DungeonTheme.ogg"></audio>
+
+  <script>
+    // ---- Data model ----
+    const DEFAULT_SAVE = {
+      name: 'Tristan', lvl:1, xp:0, hp:10, maxhp:10, gold:0,
+      dungeonType: null
+    };
+
+    // DOM
+    const titleScreen = document.getElementById('title-screen');
+    const gameView = document.getElementById('game-view');
+    const tutorial = document.getElementById('tutorial');
+    const btnNew = document.getElementById('btn-new');
+    const btnLoad = document.getElementById('btn-load');
+    const btnTut = document.getElementById('btn-tut');
+    const btnBackToTitle = document.getElementById('btn-back-to-title');
+    const titleAudio = document.getElementById('title-audio');
+    const dungeonAudio = document.getElementById('dungeon-audio');
+
+    const tintOverlay = document.getElementById('tint-overlay');
+    const dungeonName = document.getElementById('dungeon-name');
+    const logEl = document.getElementById('log');
+
+    const playerNameEl = document.getElementById('player-name');
+    const playerLvlEl = document.getElementById('player-lvl');
+    const playerHpEl = document.getElementById('player-hp');
+    const playerMaxHpEl = document.getElementById('player-maxhp');
+    const currencyAmt = document.getElementById('currency-amt');
+
+    const btnExplore = document.getElementById('btn-explore');
+    const btnRest = document.getElementById('btn-rest');
+    const btnSave = document.getElementById('btn-save');
+    const btnReturn = document.getElementById('btn-return');
+    const toggleMusic = document.getElementById('toggle-music');
+
+    // Battle
+    const battleOverlay = document.getElementById('battle-overlay');
+    const enemyImg = document.getElementById('enemy-img');
+    const playerBattleHpEl = document.getElementById('player-battle-hp');
+    const enemyHpEl = document.getElementById('enemy-hp');
+    const choiceFight = document.getElementById('choice-fight');
+    const choiceAct = document.getElementById('choice-act');
+    const choiceItem = document.getElementById('choice-item');
+    const choiceFlee = document.getElementById('choice-flee');
+
+    let state = {};
+    let inBattle = false;
+    let currentEnemy = null;
+
+    // ---- Utilities ----
+    function log(text){
+      const line = document.createElement('div');
+      line.textContent = text;
+      logEl.prepend(line);
+    }
+
+    function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+
+    // ---- Dungeon generator (type + tint) ----
+    const DUNGEON_TYPES = [
+      {id:'stone',name:'Stone Caves', tint:'rgba(120,120,200,0.35)'},
+      {id:'moss',name:'Mossy Halls', tint:'rgba(40,130,60,0.32)'},
+      {id:'fiery',name:'Ash Pits', tint:'rgba(180,40,20,0.28)'},
+      {id:'frost',name:'Frost Vaults', tint:'rgba(180,220,255,0.28)'}
+    ];
+
+    function pickDungeon(){
+      const pick = DUNGEON_TYPES[randInt(0,DUNGEON_TYPES.length-1)];
+      state.dungeonType = pick.id;
+      document.getElementById('dungeon-name').textContent = pick.name;
+      // apply tint using overlay
+      tintOverlay.style.background = pick.tint;
+    }
+
+    // ---- Audio control ----
+    function updateAudio(){
+      if(toggleMusic.checked){
+        if(gameView.style.display !== 'none'){dungeonAudio.play().catch(()=>{}); titleAudio.pause();}
+        else{titleAudio.play().catch(()=>{}); dungeonAudio.pause();}
+      } else {titleAudio.pause(); dungeonAudio.pause();}
+    }
+
+    // ---- Save / Load ----
+    const SAVE_KEY = 'tristan_save_v1';
+    function saveGame(){
+      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+      log('Game saved.');
+    }
+    function loadGame(){
+      const raw = localStorage.getItem(SAVE_KEY);
+      if(!raw) return null;
+      try{ return JSON.parse(raw);}catch(e){return null}
+    }
+
+    // ---- Game loop / actions ----
+    function startNewGame(){
+      state = JSON.parse(JSON.stringify(DEFAULT_SAVE));
+      pickDungeon();
+      syncUI();
+      titleScreen.style.display='none';
+      tutorial.style.display='none';
+      gameView.style.display='block';
+      updateAudio();
+      log('You awaken in the dungeon...');
+    }
+
+    function resumeFromSave(saved){
+      state = Object.assign({}, DEFAULT_SAVE, saved);
+      // if dungeonType not set, pick one
+      if(!state.dungeonType) pickDungeon();
+      else {
+        const pick = DUNGEON_TYPES.find(d=>d.id===state.dungeonType) || DUNGEON_TYPES[0];
+        tintOverlay.style.background = pick.tint; dungeonName.textContent = pick.name;
+      }
+      syncUI();
+      titleScreen.style.display='none';
+      tutorial.style.display='none';
+      gameView.style.display='block';
+      updateAudio();
+      log('Loaded your previous game.');
+    }
+
+    function syncUI(){
+      playerNameEl.textContent = state.name;
+      playerLvlEl.textContent = state.lvl;
+      playerHpEl.textContent = state.hp;
+      playerMaxHpEl.textContent = state.maxhp;
+      currencyAmt.textContent = state.gold;
+    }
+
+    // ---- Encounters & Battle system ----
+    function tryEncounter(){
+      // 30% chance on explore
+      if(inBattle) return;
+      if(Math.random() < 0.30){
+        startBattle(generateEnemyForLevel(state.lvl));
+      } else {
+        log('You explore the corridors... nothing yet.');
+      }
+    }
+
+    function generateEnemyForLevel(plvl){
+      // enemy difficulty scales with player level. We'll tint enemy sprite in canvas by CSS filter for variety.
+      const baseHp = 6 + plvl*3 + randInt(-1,2);
+      const power = 2 + Math.floor(plvl/2) + randInt(0,2);
+      const gold = 1 + Math.floor(plvl/2) + randInt(0,3);
+      const id = 'grunt';
+      return {id, name:'Grunt', hp:baseHp, maxhp:baseHp, atk:power, gold};
+    }
+
+    function startBattle(enemy){
+      inBattle = true; currentEnemy = enemy;
+      battleOverlay.style.display='flex';
+      enemyImg.src = 'IMAGES/enemy.png';
+      // change enemy appearance slightly depending on dungeon
+      applyEnemyTintByDungeon(state.dungeonType);
+      enemyHpEl.textContent = 'HP: ' + enemy.hp + '/' + enemy.maxhp;
+      playerBattleHpEl.textContent = 'HP: ' + state.hp + '/' + state.maxhp;
+      log('A ' + enemy.name + ' appeared!');
+    }
+
+    function applyEnemyTintByDungeon(dungeonId){
+      // use CSS filters to shift hue/saturate so the same sprite looks different
+      const map = {
+        'stone': 'none',
+        'moss': 'hue-rotate(80deg) saturate(1.2)',
+        'fiery': 'hue-rotate(-20deg) saturate(1.3) brightness(0.95)',
+        'frost': 'hue-rotate(170deg) saturate(0.8) brightness(1.05)'
+      };
+      enemyImg.style.filter = map[dungeonId] || 'none';
+    }
+
+    // Player chooses fight
+    function playerFight(){
+      if(!inBattle) return;
+      const playerAtk = 2 + Math.floor(state.lvl/2) + randInt(0,2);
+      currentEnemy.hp -= playerAtk;
+      log('You strike the ' + currentEnemy.name + ' for ' + playerAtk + ' damage.');
+      if(currentEnemy.hp <= 0){
+        victory();
+      } else {
+        enemyHpEl.textContent = 'HP: ' + currentEnemy.hp + '/' + currentEnemy.maxhp;
+        setTimeout(enemyTurn,600);
+      }
+    }
+
+    function playerAct(){
+      if(!inBattle) return;
+      // simple Act: try to pacify for a chance
+      const success = Math.random() < 0.35;
+      if(success){
+        log('You attempt to reason with the enemy. It seems calmer.');
+        // reduce enemy next attack
+        currentEnemy.atk = Math.max(1, currentEnemy.atk-1);
+      } else {
+        log('Your attempt fails and angers the enemy.');
+        currentEnemy.atk += 1;
+      }
+      setTimeout(enemyTurn,500);
+    }
+
+    function playerUseItem(){
+      if(!inBattle) return;
+      // starter: no items. We'll implement a simple potion when player rests
+      if(state.potions && state.potions>0){
+        state.potions -= 1; state.hp = Math.min(state.maxhp, state.hp + 6);
+        log('You used a potion and recovered HP.');
+        syncUI();
+      } else {
+        log('You have no items to use.');
+      }
+      setTimeout(enemyTurn,500);
+    }
+
+    function playerFlee(){
+      if(!inBattle) return;
+      const chance = 0.5 - (currentEnemy.atk - state.lvl)*0.05; // roughly scale
+      if(Math.random() < chance){
+        log('You managed to flee!');
+        endBattle(false);
+      } else {
+        log('You failed to escape!');
+        setTimeout(enemyTurn,400);
+      }
+    }
+
+    function enemyTurn(){
+      if(!inBattle) return;
+      const dmg = Math.max(1, currentEnemy.atk + randInt(-1,1));
+      state.hp -= dmg;
+      log('The ' + currentEnemy.name + ' hits you for ' + dmg + ' damage.');
+      if(state.hp <= 0){
+        state.hp = 0; syncUI();
+        defeat();
+      } else {
+        playerBattleHpEl.textContent = 'HP: ' + state.hp + '/' + state.maxhp;
+        playerHpEl.textContent = state.hp;
+        syncUI();
+      }
+    }
+
+    function victory(){
+      log('You defeated the ' + currentEnemy.name + '!');
+      state.gold += currentEnemy.gold;
+      const xpGain = 3 + Math.floor(currentEnemy.maxhp/4);
+      state.xp = (state.xp || 0) + xpGain;
+      log('You gained ' + xpGain + ' XP and ' + currentEnemy.gold + ' gold.');
+      checkLevelUp();
+      endBattle(true);
+    }
+
+    function checkLevelUp(){
+      const xpToLevel = 5 + (state.lvl * 4);
+      if((state.xp||0) >= xpToLevel){
+        state.xp -= xpToLevel; state.lvl += 1; state.maxhp += 4; state.hp = state.maxhp;
+        log('You leveled up! Now level ' + state.lvl + '.');
+      }
+      syncUI();
+    }
+
+    function defeat(){
+      log('You collapsed... The world fades.');
+      // simple respawn: back to title and clear save
+      inBattle = false; currentEnemy = null; battleOverlay.style.display='none';
+      titleScreen.style.display='block'; gameView.style.display='none';
+      titleAudio.play().catch(()=>{}); dungeonAudio.pause();
+      localStorage.removeItem(SAVE_KEY);
+      log('Your save was lost.');
+    }
+
+    function endBattle(win){
+      inBattle = false; currentEnemy = null; battleOverlay.style.display='none';
+      syncUI();
+    }
+
+    // ---- UI bindings ----
+    btnNew.addEventListener('click', ()=>{ startNewGame(); });
+    btnTut.addEventListener('click', ()=>{ titleScreen.style.display='none'; tutorial.style.display='block'; titleAudio.pause(); });
+    btnBackToTitle.addEventListener('click', ()=>{ tutorial.style.display='none'; titleScreen.style.display='block'; titleAudio.play().catch(()=>{}); });
+
+    btnLoad.addEventListener('click', ()=>{
+      const s = loadGame();
+      if(s) resumeFromSave(s);
+      else alert('No save found. Start a NEW GAME.');
+    });
+
+    btnExplore.addEventListener('click', ()=>{ tryEncounter(); });
+    btnRest.addEventListener('click', ()=>{
+      // rest restores hp and gives tiny chance of item (potion)
+      const healed = Math.min(state.maxhp, state.hp + Math.ceil(state.maxhp*0.5));
+      state.hp = healed; state.potions = (state.potions||0) + (Math.random()<0.15?1:0);
+      log('You rest and recover HP.'); syncUI();
+    });
+
+    btnSave.addEventListener('click', ()=>{ saveGame(); });
+    btnReturn.addEventListener('click', ()=>{ if(confirm('Return to title? Unsaved progress will remain.')){gameView.style.display='none'; titleScreen.style.display='block'; updateAudio();}});
+
+    toggleMusic.addEventListener('change', ()=>updateAudio());
+
+    // Choices
+    choiceFight.addEventListener('click', ()=>playerFight());
+    choiceAct.addEventListener('click', ()=>playerAct());
+    choiceItem.addEventListener('click', ()=>playerUseItem());
+    choiceFlee.addEventListener('click', ()=>playerFlee());
+
+    // start title audio
+    titleAudio.volume = 0.6; dungeonAudio.volume = 0.6;
+    titleAudio.play().catch(()=>{});
+
+    // On page load try to resume silently
+    window.addEventListener('load', ()=>{
+      const s = loadGame();
+      if(s){
+        // leave user at title but indicate save exists
+        log('Save file detected. Use LOAD GAME to continue.');
+      }
+    });
+
+    // save periodically (autosave)
+    setInterval(()=>{
+      if(gameView.style.display!=='none') saveGame();
+    }, 30_000);
+
+  </script>
 </body>
 </html>
