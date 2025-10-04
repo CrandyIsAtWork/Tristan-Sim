@@ -13,10 +13,14 @@ const nextBtn = document.getElementById("next");
 
 nextBtn.addEventListener("click", () => {
   currentLine++;
+
   if (currentLine < dialogues.length) {
     dialogueEl.textContent = dialogues[currentLine];
   } else {
-    // Cutscene end → move to first world
-    window.location.href = "dimensions/pokemon.html";
+    // Fade-out animation before moving to next dimension
+    document.body.classList.add("fade-out");
+    setTimeout(() => {
+      window.location.href = "DIMENSIONS/POKEMON.html";
+    }, 2000);
   }
 });
