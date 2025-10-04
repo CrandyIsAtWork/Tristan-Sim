@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dimension 1: Grasslands</title>
+  <style>
+    body {
+      margin: 0;
+      background: url("../assets/images/Grass.jpg") repeat;
+      background-size: 256px 256px;
+      overflow: hidden;
+    }
+
+    #house, #villager1, #villager2, #tristan {
+      position: absolute;
+    }
+
+    #house {
+      left: 200px;
+      bottom: 80px;
+      width: 180px;
+    }
+
+    #villager1 {
+      left: 500px;
+      bottom: 100px;
+      width: 80px;
+    }
+
+    #villager2 {
+      left: 650px;
+      bottom: 120px;
+      width: 80px;
+    }
+
+    #tristan {
+      left: 100px;
+      bottom: 100px;
+      width: 100px;
+      transition: 0.2s;
+    }
+  </style>
+</head>
+<body>
+  <img id="house" src="../assets/images/House.png">
+  <img id="villager1" src="../assets/images/Villager1.jpg">
+  <img id="villager2" src="../assets/images/Villager2.jpg">
+  <img id="tristan" src="../assets/images/Tristan.png">
+
+  <audio src="../assets/music/DungeonTheme.ogg" autoplay loop></audio>
+
+  <script>
+    const tristan = document.getElementById('tristan');
+    let x = 100, y = 100;
+
+    document.addEventListener('keydown', e => {
+      const step = 15;
+      if (e.key === 'ArrowRight') x += step;
+      if (e.key === 'ArrowLeft') x -= step;
+      if (e.key === 'ArrowUp') y += step;
+      if (e.key === 'ArrowDown') y -= step;
+      tristan.style.left = x + 'px';
+      tristan.style.bottom = y + 'px';
+    });
+  </script>
+</body>
+</html>
