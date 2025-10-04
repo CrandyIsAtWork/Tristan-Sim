@@ -7,7 +7,7 @@
   <style>
     body {
       margin: 0;
-      background: url("../assets/images/Grass.jpg") repeat;
+      background: url("../ASSETS/IMAGES/Grass.jpg") repeat;
       background-size: 256px 256px;
       overflow: hidden;
     }
@@ -38,31 +38,100 @@
       left: 100px;
       bottom: 100px;
       width: 100px;
-      transition: 0.2s;
+      transition: 0.15s;
+    }
+
+    #dialogue-box {
+      display: none;
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-family: Arial, sans-serif;
+      width: 60%;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <img id="house" src="../assets/images/House.png">
-  <img id="villager1" src="../assets/images/Villager1.jpg">
-  <img id="villager2" src="../assets/images/Villager2.jpg">
-  <img id="tristan" src="../assets/images/Tristan.png">
+  <img id="house" src="../ASSETS/IMAGES/House.png">
+  <img id="villager1" src="../ASSETS/IMAGES/Villager1.jpg">
+  <img id="villager2" src="../ASSETS/IMAGES/Villager2.jpg">
+  <img id="tristan" src="../ASSETS/IMAGES/Tristan.png">
 
-  <audio src="../assets/music/DungeonTheme.ogg" autoplay loop></audio>
+  <div id="dialogue-box">
+    <p id="dialogue-text"></p>
+  </div>
+
+  <audio src="../ASSETS/MUSIC/DungeonTheme.ogg" autoplay loop></audio>
 
   <script>
     const tristan = document.getElementById('tristan');
+    const villager1 = document.getElementById('villager1');
+    const villager2 = document.getElementById('villager2');
+    const dialogueBox = document.getElementById('dialogue-box');
+    const dialogueText = document.getElementById('dialogue-text');
+
     let x = 100, y = 100;
+    let talking = false;
+    let nearVillager = null;
 
     document.addEventListener('keydown', e => {
-      const step = 15;
-      if (e.key === 'ArrowRight') x += step;
-      if (e.key === 'ArrowLeft') x -= step;
-      if (e.key === 'ArrowUp') y += step;
-      if (e.key === 'ArrowDown') y -= step;
-      tristan.style.left = x + 'px';
-      tristan.style.bottom = y + 'px';
+      if (talking && e.key === 'e') {
+        // Close dialogue
+        dialogueBox.style.display = 'none';
+        talking = false;
+        return;
+      }
+
+      if (!talking) {
+        const step = 15;
+        if (e.key === 'ArrowRight') x += step;
+        if (e.key === 'ArrowLeft') x -= step;
+        if (e.key === 'ArrowUp') y += step;
+        if (e.key === 'ArrowDown') y -= step;
+        tristan.style.left = x + 'px';
+        tristan.style.bottom = y + 'px';
+      }
+
+      checkVillagerProximity();
+
+      if (nearVillager && e.key === 'e') {
+        talkToVillager(nearVillager);
+      }
     });
+
+    function getRect(element) {
+      return element.getBoundingClientRect();
+    }
+
+    function checkVillagerProximity() {
+      const tRect = getRect(tristan);
+      nearVillager = null;
+
+      [villager1, villager2].forEach(v => {
+        const vRect = getRect(v);
+        const dx = Math.abs((tRect.left + tRect.width / 2) - (vRect.left + vRect.width / 2));
+        const dy = Math.abs((tRect.bottom + tRect.height / 2) - (vRect.bottom + vRect.height / 2));
+
+        if (dx < 100 && dy < 100) nearVillager = v;
+      });
+    }
+
+    function talkToVillager(v) {
+      talking = true;
+      dialogueBox.style.display = 'block';
+
+      if (v === villager1) {
+        dialogueText.textContent = "Villager 1: Hey there, stranger! You look lost...";
+      } else if (v === villager2) {
+        dialogueText.textContent = "Villager 2: Careful ahead — some strange creatures wander these fields!";
+      }
+    }
   </script>
 </body>
 </html>
